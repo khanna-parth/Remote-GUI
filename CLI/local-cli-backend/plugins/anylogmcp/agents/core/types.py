@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 from plugins.anylogmcp.agents.base import ResultFn
+from plugins.anylogmcp.agents.configuration import UserSettings
 
 if TYPE_CHECKING:
     from plugins.anylogmcp.agents.visualization.charts.charting_agent import ChartingAgent
@@ -13,3 +14,4 @@ class AnylogAgentDeps:
     chart_agent: "ChartingAgent"
     tabular_agent: "TabularAgent"
     mcp_agent: "MCPAgent"
+    user_config: UserSettings

@@ -14,6 +14,7 @@ from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.openai import OpenAIProvider
 import json
 from plugins.anylogmcp.agents.base import ResultFn, StreamingMarker
+from plugins.anylogmcp.agents.configuration import UserSettings
 from plugins.anylogmcp.agents.interagent_tools import setup_interagent_tools
 from plugins.anylogmcp.agents.core.types import AnylogAgentDeps
 from plugins.anylogmcp.agents.visualization.charts.charting_agent import create_chart_agent
@@ -82,9 +83,20 @@ def create_default_agent(mcp: MCPServerSSE, model: Optional[Model] = None) -> An
 
         return full_agent
 
-async def run_core_agent(agent: AnylogAgent, prompt: str, resultFn: ResultFn):
-    agent.agent_deps.resultFn = resultFn
-    agent.agent_deps.mcp_agent.on_tool_call = resultFn
+async def run_core_agent(agent: AnylogAgent, prompt: str, resultFn: ResultFn, user_settings: UserSettings):
+    # agent.agent_deps.resultFn = resultFn
+    # agent.agent_deps.mcp_agent.on_tool_call = resultFn
+
+    # Update deps based on user configuration
+    run_deps = AnylogAgentDeps(
+        resultFn=resultFn,
+        chart_agent=agent.agent_deps.chart_agent,
+        tabular_agent=agent.agent_deps.tabular_agent,
+        mcp_agent=agent.agent_deps.mcp_agent,
+        user_config=user_settings
+    )
+
+    run_deps.mcp_agent.on_tool_call = resultFn
     
     json_buffer = ""
     last_msg_length = 0
@@ -92,7 +104,7 @@ async def run_core_agent(agent: AnylogAgent, prompt: str, resultFn: ResultFn):
     try:
         await resultFn("Generating a response...", StreamingMarker.STATUS_UPDATE)
 
-        async with agent.run_stream(prompt, deps=agent.agent_deps) as result:
+        async with agent.run_stream(prompt, model=user_settings.models.planning , deps=run_deps) as result:
             try:
                 async for resp, is_complete in result.stream_responses():
                     print(f"Response: {resp}")
