@@ -7,13 +7,16 @@ import TableView from "./rendering/TableView";
 import { sleep } from "../../utils/asyncUtils";
 import { IoCogSharp, IoReturnUpBack } from "react-icons/io5";
 import chatState from "./state/state";
-import { parseTimestamp } from "./utils/dateHelpers";
+import { parseTimestamp } from "./utils/numerical";
+import { updateChat } from "./utils/storage";
 
 const ChatView = () => {
+  const [chatTitle, setChatTitle] = useState("");
   const [input, setInput] = useState("");
   const inputRef = useRef(null);
 
-  const { selectedChat, clearSelectedChat, toggleShowConfig } = chatState();
+  const { selectedChat, clearSelectedChat, toggleShowConfig, setWsID } =
+    chatState();
 
   const [messages, setMessages] = useState([]);
 
@@ -71,7 +74,23 @@ const ChatView = () => {
   }, [messages, isGenerating, generatingVis]);
 
   useEffect(() => {
-    console.log(`Loading chat history of length: ${selectedChat?.messages?.length || 0}`);
+    if (!chatTitle) return;
+
+    const timeout = setTimeout(() => {
+      updateChat(selectedChat?.id, {
+        title: chatTitle,
+      });
+    }, 1000);
+
+    return () => clearTimeout(timeout);
+  }, [chatTitle]);
+
+  useEffect(() => {
+    console.log(
+      `Loading chat history of length: ${selectedChat?.messages?.length || 0}`,
+    );
+
+    setChatTitle(selectedChat?.title || "");
     setMessages(selectedChat?.messages || []);
 
     // Connect to backend's MCP handler
@@ -91,7 +110,11 @@ const ChatView = () => {
         // Get raw data from websocket
         // TODO: For each message from websocket, define structure in frontend so its easier to parse
         const dataStream = JSON.parse(event.data);
-        console.log("Data stream: ", dataStream);
+
+        if (dataStream.id) {
+          setWsID(dataStream.id);
+          console.log(`Received ID from server: ${dataStream.id}`);
+        }
 
         if (dataStream.marker === "TEXT_CHUNK") {
           // Add to current text streamed
@@ -102,9 +125,10 @@ const ChatView = () => {
           // Marked by 'type' to sort how to render what
           // Chart data from backend is already wrapped inside of chart_data because other data such as analysis exists
           const newVis = { ...dataStream.data, type: "chart" };
-          const updated = generatingVisRef.current ? (Array.isArray(generatingVisRef.current)
-            ? [...generatingVisRef.current, newVis]
-            : [generatingVisRef.current, newVis])
+          const updated = generatingVisRef.current
+            ? Array.isArray(generatingVisRef.current)
+              ? [...generatingVisRef.current, newVis]
+              : [generatingVisRef.current, newVis]
             : newVis;
 
           generatingVisRef.current = updated;
@@ -119,9 +143,10 @@ const ChatView = () => {
             tableData: { ...dataStream.data },
             type: "table",
           };
-          const updated = generatingVisRef.current ? (Array.isArray(generatingVisRef.current)
-            ? [...generatingVisRef.current, newVis]
-            : [generatingVisRef.current, newVis])
+          const updated = generatingVisRef.current
+            ? Array.isArray(generatingVisRef.current)
+              ? [...generatingVisRef.current, newVis]
+              : [generatingVisRef.current, newVis]
             : newVis;
 
           generatingVisRef.current = updated;
@@ -135,10 +160,18 @@ const ChatView = () => {
           const newMessage = {
             sender: "AnyLog AI",
             text: finalResponse || "",
-            vis: finaVis
+            vis: finaVis,
           };
 
-          setMessages((prev) => [...prev, newMessage]);
+          setMessages((prev) => {
+            const updatedMessages = [...prev, newMessage];
+
+            updateChat(selectedChat.id, {
+              messages: updatedMessages,
+            });
+
+            return updatedMessages;
+          });
 
           // TEXT_END signals that the current message being sent back is over. Empty for next message
 
@@ -146,7 +179,7 @@ const ChatView = () => {
           generatingVisRef.current = null;
           setGeneratingBuffer("");
           setIsGenerating(false);
-          setStatus("")
+          setStatus("");
 
           console.log("Message completed");
         } else if (dataStream.marker === "STATUS_UPDATE") {
@@ -215,57 +248,129 @@ const ChatView = () => {
   };
   return (
     <div style={styles.container}>
-      <div style={{ width: '100%', display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #e5e7eb', backgroundColor: '#fff', boxShadow: '0 2px 6px rgba(0,0,0,0.08)', alignItems: 'center' }}>
-        <div style={{ width: '100%', display: 'flex', flexDirection: 'row', justifyContent: 'start', alignItems: 'center' }}>
-          <button style={{ width: '60px', height: '60px', borderRadius: 10, background: 'none', display: 'flex', justifyContent: 'center', alignItems: 'center' }} onClick={() => clearSelectedChat()} >
-            <IoReturnUpBack style={{ paddingRight: 4, marginRight: 4, cursor: 'pointer' }} size={30} color="red" />
+      <div
+        style={{
+          width: "100%",
+          display: "flex",
+          justifyContent: "space-between",
+          borderBottom: "1px solid #e5e7eb",
+          backgroundColor: "#fff",
+          boxShadow: "0 2px 6px rgba(0,0,0,0.08)",
+          alignItems: "center",
+        }}
+      >
+        <div
+          style={{
+            width: "100%",
+            display: "flex",
+            flexDirection: "row",
+            justifyContent: "start",
+            alignItems: "center",
+          }}
+        >
+          <button
+            style={{
+              width: "60px",
+              height: "60px",
+              borderRadius: 10,
+              background: "none",
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+            }}
+            onClick={() => clearSelectedChat()}
+          >
+            <IoReturnUpBack
+              style={{ paddingRight: 4, marginRight: 4, cursor: "pointer" }}
+              size={30}
+              color="red"
+            />
           </button>
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <h2 style={{ margin: 0 }}>{selectedChat.title.length > 20 ? selectedChat.title.slice(0, 20) : selectedChat.title}</h2>
-            <h2 style={{ fontSize: '14px', color: 'gray', margin: 0 }}>Last Accessed: {parseTimestamp(selectedChat.lastAccessDate) || "Last Accessed: Unknown"}</h2>
+          <div style={{ display: "flex", flexDirection: "column" }}>
+            <input
+              value={chatTitle}
+              onChange={(e) => setChatTitle(e.target.value)}
+              style={{
+                fontSize: "1.5rem",
+                fontWeight: 600,
+                border: "none",
+                outline: "none",
+                background: "transparent",
+                padding: 0,
+                margin: 0,
+                width: "100%",
+              }}
+            />
+            {/* <h2 style={{ margin: 0 }}>
+              {selectedChat.title.length > 20
+                ? selectedChat.title.slice(0, 20)
+                : selectedChat.title}
+            </h2> */}
+            <h2 style={{ fontSize: "14px", color: "gray", margin: 0 }}>
+              Last Accessed:{" "}
+              {parseTimestamp(selectedChat.lastAccessDate) ||
+                "Last Accessed: Unknown"}
+            </h2>
           </div>
         </div>
-        <IoCogSharp style={{ cursor: 'pointer', paddingRight: 4, marginRight: 4 }} size={30} onClick={() => toggleShowConfig()} />
+        <IoCogSharp
+          style={{ cursor: "pointer", paddingRight: 4, marginRight: 4 }}
+          size={30}
+          onClick={() => toggleShowConfig()}
+        />
       </div>
       <div style={styles.chatBox}>
         {messages.map((msg, index) => {
           const isUser = msg.sender === "user";
 
           return (
-            <div key={index} style={{ display: "flex", flexDirection: "column", alignItems: isUser ? "flex-end" : "flex-start" }}>
+            <div
+              key={index}
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: isUser ? "flex-end" : "flex-start",
+              }}
+            >
               <div style={{ maxWidth: "100vw" }}>
                 <ChatMessage isUser={isUser} text={msg.text} />
               </div>
 
               {!isUser && msg.vis && (
                 <div style={{ position: "relative", width: "100%" }}>
-                    // If only one visualization, direct render. If more than 1 visualization generated, loop over each one and render
-                  {(Array.isArray(msg.vis) ? msg.vis : [msg.vis]).map((visualization, visIndex) => {
-                    if (visualization.type === "chart" && visualization.chart_data) {
-
-                      // LLM likes to generate chart option fields that are sometimes null
-                      // NULL fields are NOT supported from Chart.js
-                      const currentChartData = cleanNullData(visualization.chart_data);
-                      return (
-                        <RenderChart
-                          key={visIndex}
-                          chartData={currentChartData}
-                          visualization={visualization}
-                          chartIndex={visIndex}
-                        />
-                      );
-                    } else if (visualization.type === "table") {
-                      return (
-                        <div key={visIndex} style={{ maxWidth: "80%" }}>
-                          <TableView
-                            tableTitle={visualization.tableData?.title}
-                            tableData={visualization.tableData}
+                  {/* If only one visualization, direct render. If more than 1 visualization generated, loop over each one and render */}
+                  {(Array.isArray(msg.vis) ? msg.vis : [msg.vis]).map(
+                    (visualization, visIndex) => {
+                      if (
+                        visualization.type === "chart" &&
+                        visualization.chart_data
+                      ) {
+                        // LLM likes to generate chart option fields that are sometimes null
+                        // NULL fields are NOT supported from Chart.js
+                        const currentChartData = cleanNullData(
+                          visualization.chart_data,
+                        );
+                        return (
+                          <RenderChart
+                            key={visIndex}
+                            chartData={currentChartData}
+                            visualization={visualization}
+                            chartIndex={visIndex}
                           />
-                        </div>
-                      );
-                    }
-                    return null;
-                  })}
+                        );
+                      } else if (visualization.type === "table") {
+                        return (
+                          <div key={visIndex} style={{ maxWidth: "80%" }}>
+                            <TableView
+                              tableTitle={visualization.tableData?.title}
+                              tableData={visualization.tableData}
+                            />
+                          </div>
+                        );
+                      }
+                      return null;
+                    },
+                  )}
                 </div>
               )}
               <ChatAuthorView isUser={isUser} />
@@ -274,7 +379,13 @@ const ChatView = () => {
         })}
 
         {(generatingBuffer || generatingVis) && (
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start" }}>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "flex-start",
+            }}
+          >
             <div style={{ maxWidth: "100vw" }}>
               <ChatMessage isUser={false} text={generatingBuffer} />
             </div>
@@ -283,9 +394,14 @@ const ChatView = () => {
               <div style={{ position: "relative", width: "100%" }}>
                 {(() => {
                   let genChartCounter = 0;
-                  return (Array.isArray(generatingVis) ? generatingVis : [generatingVis]).map((visualization, visIndex) => {
+                  return (
+                    Array.isArray(generatingVis)
+                      ? generatingVis
+                      : [generatingVis]
+                  ).map((visualization, visIndex) => {
                     if (visualization.type === "chart") {
-                      const currentChartData = generatingCharts?.[genChartCounter];
+                      const currentChartData =
+                        generatingCharts?.[genChartCounter];
                       genChartCounter++;
                       return (
                         <RenderChart
@@ -315,9 +431,20 @@ const ChatView = () => {
         )}
       </div>
 
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
         {status.length > 0 && (
-          <h1 style={{ fontSize: 14, color: connected ? (isGenerating ? "black" : "green") : "red" }}>
+          <h1
+            style={{
+              fontSize: 14,
+              color: connected ? (isGenerating ? "black" : "green") : "red",
+            }}
+          >
             {status}
           </h1>
         )}
@@ -338,11 +465,15 @@ const ChatView = () => {
           placeholder="Type a message..."
           rows="3"
         />
-        <button style={styles.button} disabled={!connected} onClick={handleSend}>
+        <button
+          style={styles.button}
+          // disabled={!connected}
+          onClick={handleSend}
+        >
           Send
         </button>
       </div>
-    </div >
+    </div>
   );
 };
 
@@ -367,11 +498,11 @@ const styles = {
     msOverflowStyle: "none",
   },
   inputArea: {
-    display: 'flex',
-    backgroundColor: '#fff',
-    padding: '10px',
+    display: "flex",
+    backgroundColor: "#fff",
+    padding: "10px",
     borderTop: "1px solid #ccc",
-    boxSizing: 'border-box',
+    boxSizing: "border-box",
   },
   input: {
     flex: 1,

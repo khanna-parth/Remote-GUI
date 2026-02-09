@@ -7,6 +7,7 @@ from pydantic_ai.providers.openai import OpenAIProvider
 from pydantic_ai.providers.groq import GroqProvider
 from pydantic_ai.models.groq import GroqModel
 from plugins.anylogmcp.agents.base import ResultFn
+from plugins.anylogmcp.agents.configuration import User
 from plugins.anylogmcp.agents.visualization.charts.sys_prompt import CHARTING_PROMPT
 from .modeling.simplified import *
 from dotenv import load_dotenv
@@ -37,13 +38,6 @@ default_model = OpenAIChatModel(
     ),
 )
 
-# default_model = GroqModel(
-#     'openai/gpt-oss-20b', provider=GroqProvider(api_key=os.getenv("GROQ_API_KEY"))
-#     # 'llama-3.3-70b-versatile', provider=GroqProvider(api_key=os.getenv("GROQ_API_KEY"))
-#     # 'openai/gpt-oss-120b', provider=GroqProvider(api_key=os.getenv("GROQ_API_KEY"))
-# )
-
-
 class ChartingAgent(Agent):
     """
     Agent that takes in a prompt to plot data and outputs a simplified CompressedChart.
@@ -62,11 +56,12 @@ class ChartingAgent(Agent):
         )
         self.guidelines = guidelines
 
-    async def generate_chart(self, query: str) -> AnalyticalResponse | Exception:
+    async def generate_chart(self, query: str, user_settings: User) -> AnalyticalResponse | Exception:
         ''' Asynchronously runs the charting agent and builds full Chart.js schema from its normal simplified output'''
         try:
+            model = user_settings.charting_model()
             print(f"CHART REQUEST: {query}")
-            result: AgentRunResult[ChartOutput] = await self.run(query, output_type=ChartOutput)
+            result: AgentRunResult[ChartOutput] = await self.run(query, model=model, output_type=ChartOutput)
 
             compressed_data = result.output.chart_info
             full_chart = build_full_chart_data(compressed_data)
@@ -81,15 +76,3 @@ def create_chart_agent(custom_model: Optional[Model] = None, custom_guidelines: 
     chart_agent = ChartingAgent(model=custom_model if custom_model else default_model, guidelines=custom_guidelines if custom_guidelines else CHARTING_PROMPT)
     
     return chart_agent
-
-# async def run_chart_agent(agent: ChartingAgent, query: str) -> AnalyticalResponse | Exception:
-#     ''' Asynchronously runs the charting agent and builds full Chart.js schema from its normal simplified output'''
-#     try:
-#         result: AgentRunResult[ChartOutput] = await agent.run(query, output_type=ChartOutput)
-
-#         compressed_data = result.output.chart_info
-#         full_chart = build_full_chart_data(compressed_data)
-#         return full_chart
-#     except Exception as e:
-#         return Exception(f"Failed to generate chart: {e}")
-

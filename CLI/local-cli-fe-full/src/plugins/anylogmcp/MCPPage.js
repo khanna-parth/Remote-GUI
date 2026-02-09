@@ -7,6 +7,8 @@ import { Box } from '@mui/material';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
 import ConfigView from './ConfigView';
+import { sendConfiguration } from './utils/network';
+import { sleep } from '../../utils/asyncUtils';
 
 export const pluginMetadata = {
   name: 'Chat',
@@ -15,7 +17,38 @@ export const pluginMetadata = {
 
 const MCPPage = () => {
   // const [selectedChat, setSelectedChat] = useState('');
-  const { selectedChat, showConfig, toggleShowConfig } = chatState();
+  const { selectedChat, showConfig, toggleShowConfig, modelSettings, setModelSettings, wsID } = chatState();
+
+  useEffect(() => {
+    try {
+      const settings = localStorage.getItem("chat-plugin/user-settings");
+      if (settings) {
+        const settingsData = JSON.parse(settings);
+        setModelSettings(settingsData);
+        console.log(`Loaded locally saved LLM settings from mainpage`);
+      } else {
+        console.log(`Couldn't find locally saved LLM settings`);
+      }
+    } catch (e) {
+      console.log(`Failed loading user settings: ${e}`);
+    }
+  }, [])
+
+  useEffect(() => {
+    const updateConfiguration = async () => {
+      await sleep(3000);
+      try {
+        const updated = await sendConfiguration(wsID, modelSettings);
+        console.log(`Config observer pushed config settings: ${updated}`);
+      } catch (e) {
+        console.log(`Config observer failed to push config settings: ${e}`);
+      }
+    }
+
+    if (wsID) {
+      updateConfiguration()
+    }
+  }, [wsID, modelSettings])
 
   return (
     <div style={{

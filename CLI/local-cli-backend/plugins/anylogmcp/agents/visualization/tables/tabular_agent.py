@@ -7,6 +7,7 @@ from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.openai import OpenAIProvider
 from pydantic_ai.providers.groq import GroqProvider
 from pydantic_ai.models.groq import GroqModel
+from plugins.anylogmcp.agents.configuration import User
 from plugins.anylogmcp.agents.visualization.tables.sys_prompt import TABULAR_PROMPT
 from pydantic_ai.providers.google import GoogleProvider
 from pydantic_ai.models.google import GoogleModel
@@ -103,9 +104,11 @@ class TabularAgent(Agent):
             output_type=TableOutput #type:ignore
         )
     
-    async def generate_table(self, prompt) -> TableOutputResponse:
+    async def generate_table(self, prompt: str, user_settings: User) -> TableOutputResponse:
         print(f"TABLE REQUEST: {prompt}")
-        response: AgentRunResult[TableOutput] = await self.run(prompt, output_type=TableOutput)
+        model = user_settings.tabular_model()
+
+        response: AgentRunResult[TableOutput] = await self.run(prompt, model=model, output_type=TableOutput)
         for idx, col in enumerate(response.output.column_info):
             col.set_id(idx)
         

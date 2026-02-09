@@ -2,10 +2,20 @@ import { SearchOutlined } from "@mui/icons-material";
 import { alignItems, borderRadius, flexDirection, justifyContent } from "@mui/system";
 import { IoCogSharp } from "react-icons/io5";
 import { useEffect, useMemo, useState } from "react";
-import { parseTimestamp } from "./utils/dateHelpers";
+import { parseTimestamp } from "./utils/numerical";
 import chatState from "./state/state";
+import { getAllChats, initializeChats } from "./utils/storage";
 
 export const ChatListEntry = ({ chat }) => {
+  const clipMessage = (msg) => {
+    if (msg.includes(".")) {
+      const lines = msg.split(".")
+      if (lines.length > 0) {
+        return lines.slice(-5).join('. ');
+      }
+    }
+    return `${msg.slice(0, 150)}...`
+  }
   return (
     <div style={{
       width: '95%',
@@ -44,8 +54,8 @@ export const ChatListEntry = ({ chat }) => {
           backgroundColor: chat.matchType === "message" ? '#fff59d' : 'transparent'
         }}>
           {chat.matchType === "message"
-            ? chat.messages.at(chat.matchPos)?.text
-            : chat.messages.at(-1)?.text
+            ? clipMessage(chat.messages.at(chat.matchPos)?.text)
+            : clipMessage(chat.messages.at(-1)?.text)
           }
         </span>
       ) : (
@@ -68,7 +78,9 @@ const ChatSelector = () => {
 
   const filteredChats = useMemo(() => {
     if (!Array.isArray(chats)) return [];
-    if (!searchValue) return chats;
+    if (!searchValue) {
+      return [...chats].sort((c1, c2) => c2.lastAccessDate - c1.lastAccessDate)
+    }
 
     let filtered = [];
 
@@ -86,32 +98,20 @@ const ChatSelector = () => {
       }
     })
 
-    return filtered;
+    return filtered.sort((c1, c2) => c2.lastAccessDate - c1.lastAccessDate);
   }, [searchValue, chats])
 
   useEffect(() => {
-    const rawChats = localStorage.getItem("chats");
-    console.log(`RAW: ${JSON.stringify(rawChats, null, 2)}`)
-    if (!rawChats) {
-      const defaultChats = [
-        {
-          title: "Introductions",
-          messages: [
-            { text: "Hi there", sender: "user" },
-            { text: "Hello, how may I help you", sender: "AnyLog AI" },
-            { text: "What can you do?", sender: "user" },
-            { text: "I can help you in many ways", sender: "AnyLog AI" },
-          ],
-          lastAccessDate: Date.now(),
-        }
-      ]
-
+    const existingChats = getAllChats();
+    // console.log(`RAW: ${JSON.stringify(existingChats, null, 2)}`)
+    if (!existingChats) {
+      initializeChats(); 
+      const defaultChats = getAllChats();
       console.log('Initialized chats');
-      localStorage.setItem("chats", JSON.stringify(defaultChats));
       setChats(defaultChats);
     } else {
       try {
-        setChats(JSON.parse(rawChats));
+        setChats(existingChats);
         console.log("Parsed local chats");
       } catch (e) {
         console.error("Failed to parse chats", e);
