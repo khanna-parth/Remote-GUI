@@ -9,14 +9,82 @@ import { IoCogSharp, IoReturnUpBack } from "react-icons/io5";
 import chatState from "./state/state";
 import { parseTimestamp } from "./utils/numerical";
 import { updateChat } from "./utils/storage";
+import { usePDFExport } from "./hooks/pdfExport";
+import ExportButton from "./chatcomponents/ExportPDFButton";
+
+const WS_COMMANDS = {
+  GENERATE: "GENERATE",
+  STOP: "STOP",
+};
+
+const MemoizedMessage = React.memo(({ msg, index }) => {
+  const isUser = msg.sender === "user";
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: isUser ? "flex-end" : "flex-start",
+      }}
+    >
+      <div style={{ maxWidth: "100vw" }}>
+        <ChatMessage isUser={isUser} text={msg.text} />
+      </div>
+
+      {!isUser && msg.vis && (
+        <div style={{ position: "relative", width: "100%" }}>
+          {(Array.isArray(msg.vis) ? msg.vis : [msg.vis]).map(
+            (visualization, visIndex) => {
+              if (visualization.type === "chart" && visualization.chart_data) {
+                const currentChartData = cleanNullData(
+                  visualization.chart_data,
+                );
+                return (
+                  <RenderChart
+                    key={visIndex}
+                    chartData={currentChartData}
+                    visualization={visualization}
+                    chartIndex={visIndex}
+                  />
+                );
+              } else if (visualization.type === "table") {
+                return (
+                  <div key={visIndex} style={{ maxWidth: "80%" }}>
+                    <TableView
+                      tableTitle={visualization.tableData?.title}
+                      tableData={visualization.tableData}
+                    />
+                  </div>
+                );
+              }
+              return null;
+            },
+          )}
+        </div>
+      )}
+      <ChatAuthorView isUser={isUser} />
+    </div>
+  );
+});
+
+MemoizedMessage.displayName = "MemoizedMessage";
 
 const ChatView = () => {
   const [chatTitle, setChatTitle] = useState("");
   const [input, setInput] = useState("");
   const inputRef = useRef(null);
 
-  const { selectedChat, clearSelectedChat, toggleShowConfig, setWsID } =
-    chatState();
+  const selectedChat = chatState((state) => state.selectedChat);
+  const clearSelectedChat = chatState((state) => state.clearSelectedChat);
+  const setModalViewName = chatState((state) => state.setModalViewName);
+  const setWsID = chatState((state) => state.setWsID);
+  const currentExport = chatState((state) => state.currentExport);
+  const setCurrentExport = chatState((state) => state.setCurrentExport);
+  
+
+  // const { selectedChat, clearSelectedChat, setModalViewName, setWsID, setCurrentExport } =
+  //   chatState();
 
   const [messages, setMessages] = useState([]);
 
@@ -32,17 +100,57 @@ const ChatView = () => {
   const generatingVisRef = useRef(null);
   const [generatingVis, setGeneratingVis] = useState(null);
 
-  // Connected to backend WS status
+  // Connected to backend WS status(ready-state, etc)
   const [status, setStatus] = useState("");
 
-  const handleSend = () => {
+  const messagesContainerRef = useRef(null);
+  const { exportRenderToPDF, exportToPDFLog } = usePDFExport();
+
+  useEffect(() => {
+    if (!currentExport || !currentExport.format) return;
+    
+    if (currentExport.format === "PDF") {
+      console.log('Exporting in PDF view format');
+      exportRenderToPDF(messagesContainerRef, `${chatTitle}` || 'chat');
+      setCurrentExport(currentExport.format, true);
+
+    } else if (currentExport.format === "LOG") {
+      console.log('Exporting in PDF view format');
+      exportToPDFLog(messagesContainerRef, `${chatTitle}_LOG` || 'chat');
+      setCurrentExport(currentExport.format, true);
+    }
+  }, [currentExport])
+
+  const sendWSCommand = (commandType, message = "") => {
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      const command = {
+        command_type: commandType,
+        message: message,
+      };
+      wsRef.current.send(JSON.stringify(command));
+      return true;
+    }
+    return false;
+  };
+
+  const handleSend = async () => {
+    if (isGenerating) {
+      sendWSCommand(WS_COMMANDS.STOP);
+      setIsGenerating(false);
+      setStatus("Interrupted");
+
+      await sleep(1500);
+      setStatus("");
+      return;
+    }
+
     if (!input.trim()) return;
 
     handleSendMessage(input);
     setInput("");
   };
 
-  // Avoid retriggering rendering process within React when visuializations are being shown
+  // Avoid retriggering rendering process within React when visualizations are being shown
   const generatingCharts = useMemo(() => {
     if (!generatingVis) return null;
 
@@ -63,7 +171,7 @@ const ChatView = () => {
     return null;
   }, [generatingVis]);
 
-  // Visualization delay to prevent React overwriting visualizations (fix from ChatGPT)
+  // Visualization delay to prevent React overwriting visualizations
   useEffect(() => {
     if (!isGenerating && generatingVis) {
       const timer = setTimeout(() => {
@@ -83,7 +191,7 @@ const ChatView = () => {
     }, 1000);
 
     return () => clearTimeout(timeout);
-  }, [chatTitle]);
+  }, [chatTitle, selectedChat?.id]);
 
   useEffect(() => {
     console.log(
@@ -93,22 +201,19 @@ const ChatView = () => {
     setChatTitle(selectedChat?.title || "");
     setMessages(selectedChat?.messages || []);
 
-    // Connect to backend's MCP handler
     wsRef.current = new WebSocket("ws://localhost:8000/mcp/chat");
 
     wsRef.current.onopen = async () => {
       console.log("Connected to WebSocket");
       inputRef.current?.focus();
       await sleep(2000);
-      setStatus(`Connected to server`);
+      setStatus("Connected to server");
       setConnected(true);
       inputRef.current?.focus();
     };
 
     wsRef.current.onmessage = (event) => {
       try {
-        // Get raw data from websocket
-        // TODO: For each message from websocket, define structure in frontend so its easier to parse
         const dataStream = JSON.parse(event.data);
 
         if (dataStream.id) {
@@ -116,75 +221,80 @@ const ChatView = () => {
           console.log(`Received ID from server: ${dataStream.id}`);
         }
 
-        if (dataStream.marker === "TEXT_CHUNK") {
-          // Add to current text streamed
-          generatingBufferRef.current += dataStream.data;
-          setGeneratingBuffer(generatingBufferRef.current);
-        } else if (dataStream.marker === "CHART_DATA") {
-          // Append it to list of visuals (can be visuals of any type)
-          // Marked by 'type' to sort how to render what
-          // Chart data from backend is already wrapped inside of chart_data because other data such as analysis exists
-          const newVis = { ...dataStream.data, type: "chart" };
-          const updated = generatingVisRef.current
-            ? Array.isArray(generatingVisRef.current)
-              ? [...generatingVisRef.current, newVis]
-              : [generatingVisRef.current, newVis]
-            : newVis;
+        switch (dataStream.marker) {
+          case "TEXT_CHUNK":
+            generatingBufferRef.current += dataStream.data;
+            setGeneratingBuffer(generatingBufferRef.current);
+            break;
 
-          generatingVisRef.current = updated;
-          setGeneratingVis(updated);
-          console.log("Chart data added to generating message");
-        } else if (dataStream.marker === "TABLE_DATA") {
-          // Append it to list of visuals (can be visuals of any type)
-          // Marked by 'type' to sort how to render what
-          // Table data is NOT wrapped inside of a json object.
-          // Table data is directly dataStream.data
-          const newVis = {
-            tableData: { ...dataStream.data },
-            type: "table",
-          };
-          const updated = generatingVisRef.current
-            ? Array.isArray(generatingVisRef.current)
-              ? [...generatingVisRef.current, newVis]
-              : [generatingVisRef.current, newVis]
-            : newVis;
+          case "CHART_DATA": {
+            const newVis = { ...dataStream.data, type: "chart" };
+            const updated = generatingVisRef.current
+              ? Array.isArray(generatingVisRef.current)
+                ? [...generatingVisRef.current, newVis]
+                : [generatingVisRef.current, newVis]
+              : newVis;
 
-          generatingVisRef.current = updated;
-          setGeneratingVis(updated);
-          console.log("Table data added to generating message");
-        } else if (dataStream.marker === "TEXT_END") {
-          // Append new text chunk to buffer of text being generated
-          const finaVis = generatingVisRef.current;
-          const finalResponse = generatingBufferRef.current;
+            generatingVisRef.current = updated;
+            setGeneratingVis(updated);
+            console.log("Chart data added to generating message");
+            break;
+          }
 
-          const newMessage = {
-            sender: "AnyLog AI",
-            text: finalResponse || "",
-            vis: finaVis,
-          };
+          case "TABLE_DATA": {
+            const newVis = {
+              tableData: { ...dataStream.data },
+              type: "table",
+            };
+            const updated = generatingVisRef.current
+              ? Array.isArray(generatingVisRef.current)
+                ? [...generatingVisRef.current, newVis]
+                : [generatingVisRef.current, newVis]
+              : newVis;
 
-          setMessages((prev) => {
-            const updatedMessages = [...prev, newMessage];
+            generatingVisRef.current = updated;
+            setGeneratingVis(updated);
+            console.log("Table data added to generating message");
+            break;
+          }
 
-            updateChat(selectedChat.id, {
-              messages: updatedMessages,
+          case "TEXT_END": {
+            const finalVis = generatingVisRef.current;
+            const finalResponse = generatingBufferRef.current;
+
+            const newMessage = {
+              sender: "AnyLog AI",
+              text: finalResponse || "",
+              vis: finalVis,
+            };
+
+            setMessages((prev) => {
+              const updatedMessages = [...prev, newMessage];
+
+              updateChat(selectedChat.id, {
+                messages: updatedMessages,
+              }, true);
+
+              return updatedMessages;
             });
 
-            return updatedMessages;
-          });
+            // Reset generation state
+            generatingBufferRef.current = "";
+            generatingVisRef.current = null;
+            setGeneratingBuffer("");
+            setIsGenerating(false);
+            setStatus("");
 
-          // TEXT_END signals that the current message being sent back is over. Empty for next message
+            console.log("Message completed");
+            break;
+          }
 
-          generatingBufferRef.current = "";
-          generatingVisRef.current = null;
-          setGeneratingBuffer("");
-          setIsGenerating(false);
-          setStatus("");
+          case "STATUS_UPDATE":
+            setStatus(dataStream.data);
+            break;
 
-          console.log("Message completed");
-        } else if (dataStream.marker === "STATUS_UPDATE") {
-          // For status message at bottom, requires no parsing
-          setStatus(dataStream.data);
+          default:
+            console.warn("Unknown marker:", dataStream.marker);
         }
       } catch (err) {
         console.error("Failed to parse message:", event.data, err);
@@ -201,53 +311,61 @@ const ChatView = () => {
     wsRef.current.onerror = (err) => {
       console.error("WebSocket error:", err);
       setConnected(false);
-      setStatus(`Connection error: ${err}`);
+      setStatus("Connection error");
     };
 
     return () => {
-      wsRef.current.close();
+      wsRef.current?.close();
     };
-  }, []);
+  }, [selectedChat, setWsID]);
 
   const handleSendMessage = (msg) => {
-    const generateReply = async () => {
-      const userMessage = { sender: "user", text: msg };
+    const userMessage = { sender: "user", text: msg };
+    setMessages((prev) => [...prev, userMessage]);
 
-      setMessages((prev) => [...prev, userMessage]);
+    // Clear out buffers from previous message
+    generatingBufferRef.current = "";
+    generatingVisRef.current = null;
+    setGeneratingBuffer("");
+    setGeneratingVis(null);
 
-      // Clear out buffers from previous message
-      generatingBufferRef.current = "";
-      generatingVisRef.current = null;
-      setGeneratingBuffer("");
-      setGeneratingVis(null);
+    try {
+      const success = sendWSCommand(WS_COMMANDS.GENERATE, msg);
 
-      try {
-        if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-          wsRef.current.send(msg);
-          console.log(`Awaiting reply for message #${messages.length}: ${msg}`);
-          setIsGenerating(true);
-          setStatus("");
-        } else {
-          setMessages((prev) => [
-            ...prev,
-            {
-              sender: "system",
-              text: `Failed to generate message: corrupted connection`,
-            },
-          ]);
-        }
-      } catch (e) {
+      if (success) {
+        console.log(`Awaiting reply for message #${messages.length}: ${msg}`);
+        setIsGenerating(true);
+        setStatus("");
+      } else {
         setMessages((prev) => [
           ...prev,
-          { sender: "system", text: `Failed to generate message: ${e}` },
+          {
+            sender: "system",
+            text: "Failed to generate message: corrupted connection",
+          },
         ]);
       }
-    };
-
-    generateReply();
+    } catch (e) {
+      setMessages((prev) => [
+        ...prev,
+        { sender: "system", text: `Failed to generate message: ${e.message}` },
+      ]);
+    }
   };
+
   return (
-    <div style={styles.container}>
+    <div
+      style={{
+        width: "100%",
+        height: "100vh",
+        display: "flex",
+        flexDirection: "column",
+        fontFamily: "Arial, sans-serif",
+        overflow: "hidden",
+        padding: "20px 0 0 0",
+        boxSizing: 'border-box',
+      }}
+    >
       <div
         style={{
           width: "100%",
@@ -257,6 +375,7 @@ const ChatView = () => {
           backgroundColor: "#fff",
           boxShadow: "0 2px 6px rgba(0,0,0,0.08)",
           alignItems: "center",
+          // marginTop: 20
         }}
       >
         <div
@@ -277,11 +396,13 @@ const ChatView = () => {
               display: "flex",
               justifyContent: "center",
               alignItems: "center",
+              border: "none",
+              cursor: "pointer",
             }}
             onClick={() => clearSelectedChat()}
           >
             <IoReturnUpBack
-              style={{ paddingRight: 4, marginRight: 4, cursor: "pointer" }}
+              style={{ paddingRight: 4, marginRight: 4 }}
               size={30}
               color="red"
             />
@@ -301,11 +422,6 @@ const ChatView = () => {
                 width: "100%",
               }}
             />
-            {/* <h2 style={{ margin: 0 }}>
-              {selectedChat.title.length > 20
-                ? selectedChat.title.slice(0, 20)
-                : selectedChat.title}
-            </h2> */}
             <h2 style={{ fontSize: "14px", color: "gray", margin: 0 }}>
               Last Accessed:{" "}
               {parseTimestamp(selectedChat.lastAccessDate) ||
@@ -313,70 +429,47 @@ const ChatView = () => {
             </h2>
           </div>
         </div>
-        <IoCogSharp
-          style={{ cursor: "pointer", paddingRight: 4, marginRight: 4 }}
-          size={30}
-          onClick={() => toggleShowConfig()}
-        />
+        <div style={{
+          gap: 8,
+          display: 'flex',
+          flexDirection: 'row'
+        }}>
+          <ExportButton
+            onClick={() => setModalViewName("ChatExporter")}
+            disabled={messages.length === 0}
+            hint=''
+          />
+{/* 
+          <ExportButton
+            onClick={handleExportRender}
+            disabled={messages.length === 0}
+            hint='PDF'
+          /> */}
+          <IoCogSharp
+            style={{ cursor: "pointer", paddingRight: 4, marginRight: 4 }}
+            size={30}
+            onClick={() => setModalViewName("Config")}
+          />
+        </div>
       </div>
-      <div style={styles.chatBox}>
-        {messages.map((msg, index) => {
-          const isUser = msg.sender === "user";
 
-          return (
-            <div
-              key={index}
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: isUser ? "flex-end" : "flex-start",
-              }}
-            >
-              <div style={{ maxWidth: "100vw" }}>
-                <ChatMessage isUser={isUser} text={msg.text} />
-              </div>
-
-              {!isUser && msg.vis && (
-                <div style={{ position: "relative", width: "100%" }}>
-                  {/* If only one visualization, direct render. If more than 1 visualization generated, loop over each one and render */}
-                  {(Array.isArray(msg.vis) ? msg.vis : [msg.vis]).map(
-                    (visualization, visIndex) => {
-                      if (
-                        visualization.type === "chart" &&
-                        visualization.chart_data
-                      ) {
-                        // LLM likes to generate chart option fields that are sometimes null
-                        // NULL fields are NOT supported from Chart.js
-                        const currentChartData = cleanNullData(
-                          visualization.chart_data,
-                        );
-                        return (
-                          <RenderChart
-                            key={visIndex}
-                            chartData={currentChartData}
-                            visualization={visualization}
-                            chartIndex={visIndex}
-                          />
-                        );
-                      } else if (visualization.type === "table") {
-                        return (
-                          <div key={visIndex} style={{ maxWidth: "80%" }}>
-                            <TableView
-                              tableTitle={visualization.tableData?.title}
-                              tableData={visualization.tableData}
-                            />
-                          </div>
-                        );
-                      }
-                      return null;
-                    },
-                  )}
-                </div>
-              )}
-              <ChatAuthorView isUser={isUser} />
-            </div>
-          );
-        })}
+      <div
+        ref={messagesContainerRef}
+        style={{
+          flex: 1,
+          padding: "10px",
+          display: "flex",
+          flexDirection: "column",
+          gap: "8px",
+          backgroundColor: "#f9f9f9",
+          overflowY: "auto",
+          scrollbarWidth: "none",
+          msOverflowStyle: "none",
+        }}
+      >
+        {messages.map((msg, index) => (
+          <MemoizedMessage key={index} msg={msg} index={index} />
+        ))}
 
         {(generatingBuffer || generatingVis) && (
           <div
@@ -450,10 +543,25 @@ const ChatView = () => {
         )}
       </div>
 
-      <div style={styles.inputArea}>
+      <div
+        style={{
+          display: "flex",
+          backgroundColor: "#fff",
+          padding: "10px",
+          borderTop: "1px solid #ccc",
+          boxSizing: "border-box",
+        }}
+      >
         <textarea
           ref={inputRef}
-          style={styles.input}
+          style={{
+            flex: 1,
+            padding: "8px",
+            fontSize: "14px",
+            borderRadius: "4px",
+            border: "1px solid #ccc",
+            outline: "none",
+          }}
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => {
@@ -466,88 +574,23 @@ const ChatView = () => {
           rows="3"
         />
         <button
-          style={styles.button}
-          // disabled={!connected}
+          style={{
+            marginLeft: "8px",
+            padding: "8px 12px",
+            fontSize: "14px",
+            borderRadius: "4px",
+            border: "none",
+            backgroundColor: isGenerating ? "#FF0000" : "#4f93ff",
+            color: "#fff",
+            cursor: "pointer",
+          }}
           onClick={handleSend}
         >
-          Send
+          {isGenerating ? "Stop" : "Send"}
         </button>
       </div>
     </div>
   );
-};
-
-const styles = {
-  container: {
-    width: "100%",
-    height: "100vh",
-    display: "flex",
-    flexDirection: "column",
-    fontFamily: "Arial, sans-serif",
-    overflow: "hidden",
-  },
-  chatBox: {
-    flex: 1,
-    padding: "10px",
-    display: "flex",
-    flexDirection: "column",
-    gap: "8px",
-    backgroundColor: "#f9f9f9",
-    overflowY: "auto",
-    scrollbarWidth: "none",
-    msOverflowStyle: "none",
-  },
-  inputArea: {
-    display: "flex",
-    backgroundColor: "#fff",
-    padding: "10px",
-    borderTop: "1px solid #ccc",
-    boxSizing: "border-box",
-  },
-  input: {
-    flex: 1,
-    padding: "8px",
-    fontSize: "14px",
-    borderRadius: "4px",
-    border: "1px solid #ccc",
-    outline: "none",
-  },
-  button: {
-    marginLeft: "8px",
-    padding: "8px 12px",
-    fontSize: "14px",
-    borderRadius: "4px",
-    border: "none",
-    backgroundColor: "#4f93ff",
-    color: "#fff",
-    cursor: "pointer",
-  },
-  message: {
-    maxWidth: "75%",
-    padding: "6px 14px",
-    borderRadius: "6px",
-    lineHeight: 1.5,
-    fontSize: "12px",
-    marginBottom: "6px",
-    wordBreak: "break-word",
-  },
-
-  inlineCode: {
-    background: "rgba(0,0,0,0.1)",
-    padding: "2px 4px",
-    borderRadius: "4px",
-    fontSize: "0.9em",
-  },
-
-  codeBlock: {
-    background: "#1e1e1e",
-    color: "#f8f8f2",
-    padding: "10px",
-    borderRadius: "8px",
-    overflowX: "auto",
-    fontSize: "13px",
-    marginTop: "8px",
-  },
 };
 
 export default ChatView;

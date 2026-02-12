@@ -1,4 +1,5 @@
 import asyncio
+import json
 from typing import Any, Dict
 
 from dotenv import load_dotenv
@@ -8,7 +9,12 @@ from starlette.websockets import WebSocketDisconnect, WebSocketState
 from uvicorn.protocols.utils import ClientDisconnected
 from websockets.exceptions import ConnectionClosedOK
 
-from plugins.anylogmcp.agents.base import StreamingMarker, parse_agent_error
+from plugins.anylogmcp.agents.base import (
+    StreamingMarker,
+    WSCommand,
+    WSCommandParsingError,
+    parse_agent_error,
+)
 from plugins.anylogmcp.agents.configuration import User
 from plugins.anylogmcp.agents.core.core_agent import (
     create_default_agent,
@@ -32,11 +38,14 @@ class MCPPluginManager:
             print("ERROR: No user found for WebSocket")
             return
 
-        try:
+        async def cancel_user_tasks():
+            print(f"Cancelling all tasks for {user.conn_id}: {len(user._state.tasks)}")
             for task in user._state.tasks:
                 if task and not task.done():
                     task.cancel()
+                    print("Issued cancel")
                     try:
+                        print("Awaiting")
                         await task
                     except asyncio.CancelledError:
                         print(f"[{user.conn_id}] Previous task cancelled")
@@ -45,10 +54,34 @@ class MCPPluginManager:
 
             user._state.tasks.clear()
 
-            print(f"[{user.conn_id}] Starting new task")
-            task = asyncio.create_task(self._worker(user, message))
-            user._state.tasks.append(task)
+        try:
+            print(f"Handling new request from {user.conn_id}")
+            print(message)
+            command = self.try_parsing_command(message)
+            match command.command_type:
+                case "GENERATE":
+                    await cancel_user_tasks()
+                    print(f"[{user.conn_id}] Starting new task")
+                    task = asyncio.create_task(self._worker(user, command.message))
+                    user._state.tasks.append(task)
+                case "STOP":
+                    await cancel_user_tasks()
 
+        except WSCommandParsingError as e:
+            print(f"Received invalid request type from {user.conn_id}")
+            datastream = {
+                "conn_id": str(user.conn_id),
+                "data": f"Internal error: {e}",
+                "marker": StreamingMarker.CHUNK.value,
+            }
+            await ws.send_json(datastream)
+
+            datastream = {
+                "conn_id": str(user.conn_id),
+                "data": "",
+                "marker": StreamingMarker.END.value,
+            }
+            await ws.send_json(datastream)
         except Exception as e:
             print(f"Failed handling message: {e}")
             await self._cleanup_user(user)
@@ -111,6 +144,14 @@ class MCPPluginManager:
 
         user._state.tasks.clear()
         print(f"[{user.conn_id}] Cleaned up user and runtime state")
+
+    def try_parsing_command(self, raw_data):
+        try:
+            data = json.loads(raw_data)
+            command = WSCommand.model_validate(data)
+            return command
+        except Exception as e:
+            raise WSCommandParsingError(e)
 
     async def terminate(self, ws: WebSocket):
         user = self.connections.get(ws)

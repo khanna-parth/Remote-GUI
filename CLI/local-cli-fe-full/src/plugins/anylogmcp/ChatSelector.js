@@ -1,20 +1,21 @@
 import { SearchOutlined } from "@mui/icons-material";
-import { alignItems, borderRadius, flexDirection, justifyContent } from "@mui/system";
+import { alignItems, borderRadius, color, flexDirection, justifyContent } from "@mui/system";
 import { IoCogSharp } from "react-icons/io5";
 import { useEffect, useMemo, useState } from "react";
 import { parseTimestamp } from "./utils/numerical";
 import chatState from "./state/state";
 import { getAllChats, initializeChats } from "./utils/storage";
+import MarkdownTextBlock from "./chatcomponents/MarkdownTextBlock";
 
 export const ChatListEntry = ({ chat }) => {
-  const clipMessage = (msg) => {
+  const normalizeMessage = (msg) => {
     if (msg.includes(".")) {
       const lines = msg.split(".")
       if (lines.length > 0) {
-        return lines.slice(-5).join('. ');
+        return lines.slice(0, 5).join('. ').replaceAll("*", "").replaceAll("#", "");
       }
     }
-    return `${msg.slice(0, 150)}...`
+    return `${msg.slice(0, 150)}...`.replaceAll("*", "").replaceAll("#", "");
   }
   return (
     <div style={{
@@ -48,14 +49,22 @@ export const ChatListEntry = ({ chat }) => {
       </div>
 
       {chat.messages && chat.messages.length > 0 ? (
+        // <MarkdownTextBlock
+        //   text={
+        //     chat.matchType === "messages" ?
+        //     clipMessage(chat.messages.at(chat.matchPos)?.text) :
+        //     clipMessage(chat.messages.at(-1)?.text)
+        //   }
+        //   extraStyles={{fontSize: 14, color: '#444', backgroundColor: chat.matchType === "message" ? "#fff59d" : "transparent"}}
+        // />
         <span style={{
           fontSize: 14,
           color: '#444',
           backgroundColor: chat.matchType === "message" ? '#fff59d' : 'transparent'
         }}>
           {chat.matchType === "message"
-            ? clipMessage(chat.messages.at(chat.matchPos)?.text)
-            : clipMessage(chat.messages.at(-1)?.text)
+            ? normalizeMessage(chat.messages.at(chat.matchPos)?.text)
+            : normalizeMessage(chat.messages.at(-1)?.text)
           }
         </span>
       ) : (
@@ -70,7 +79,7 @@ export const ChatListEntry = ({ chat }) => {
 const ChatSelector = () => {
   const [chats, setChats] = useState([]);
   const [searchValue, setSearchValue] = useState('');
-  const { setSelectedChat, setNewChat, toggleShowConfig } = chatState();
+  const { setSelectedChat, setNewChat, setModalViewName } = chatState();
 
   const handleSearchChange = (event) => {
     setSearchValue(event.target.value);
@@ -143,7 +152,7 @@ const ChatSelector = () => {
             value={searchValue}
             onChange={handleSearchChange}
           />
-          <IoCogSharp size={30} style={{ borderRadius: 8, cursor: 'pointer' }} onClick={() => toggleShowConfig()} />
+          <IoCogSharp size={30} style={{ borderRadius: 8, cursor: 'pointer' }} onClick={() => setModalViewName("Config")} />
         </div>
 
         {/* Chats */}

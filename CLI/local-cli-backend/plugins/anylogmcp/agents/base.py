@@ -1,5 +1,8 @@
-from typing import Any, Callable, Awaitable, Literal
 from enum import Enum
+from typing import Any, Awaitable, Callable, Literal
+
+from pydantic import BaseModel
+
 
 class StreamingMarker(Enum):
     CHUNK = "TEXT_CHUNK"
@@ -8,9 +11,26 @@ class StreamingMarker(Enum):
     TABLE_DATA = "TABLE_DATA"
     STATUS_UPDATE = "STATUS_UPDATE"
     TOOL_EVENT = "TOOL_EVENT"
+    ERROR = "ERROR"
+
 
 type ResultFn = Callable[[Any, StreamingMarker], Awaitable[str]]
-# type ToolListenerFn = Callable[[str, StreamingMarker], Awaitable[str]]
+
+
+class CommandType(Enum):
+    GENERATE = "GENERATE"  # INTERRUPTS
+    STOP = "STOP"
+
+
+class WSCommand(BaseModel):
+    command_type: Literal["GENERATE", "STOP"]
+    message: str
+
+
+class WSCommandParsingError(Exception):
+    def __init__(self, msg):
+        return super().__init__(msg)
+
 
 def parse_agent_error(e) -> str:
     print(f"Agent error: {e}")

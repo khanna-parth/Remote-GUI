@@ -4,22 +4,27 @@ import { addChat, createNewChat } from '../utils/storage';
 
 const chatState = create((set) => ({
   wsID: null,
-  showConfig: false,
-  selectedChat: null,
-  modelSettings: null,
-
   clearWsID: () => set({ wsID: null }),
   setWsID: (id) => set({ wsID: id }),
 
-  toggleShowConfig: () => set((state) => ({ showConfig: !state.showConfig })),
-
+  selectedChat: null,
   setSelectedChat: (chat) => set({ selectedChat: chat }),
   clearSelectedChat: () => set({ selectedChat: null }),
   setNewChat: () => {
     const newChat = createNewChat(true);
     set({ selectedChat: newChat });
   },
+
+  modelSettings: null,
   setModelSettings: (settings) => set({ modelSettings: settings }),
+
+  modalViewName: null,
+  setModalViewName: (viewName) => set({ modalViewName: viewName }),
+
+  currentExport: { format: null, completed: false },
+  setCurrentExport: (formatToExport, completedState) => set({
+    currentExport: { format: formatToExport, completed: completedState}
+  }),
 }))
 
 export default chatState;

@@ -7,8 +7,8 @@ const ConfigView = ({ onApply = () => {} }) => {
   const {
     modelSettings,
     setModelSettings,
-    showConfig,
-    toggleShowConfig,
+    modalViewName,
+    setModalViewName,
     wsID,
   } = chatState();
   const [status, setStatus] = useState("");
@@ -89,8 +89,8 @@ const ConfigView = ({ onApply = () => {} }) => {
       console.log(`Saved LLM configuration settings locally`);
       setStatus("Applied");
       await sleep(2000);
-      if (showConfig) {
-        toggleShowConfig();
+      if (modalViewName) {
+        setModalViewName(null);
       }
     } catch (e) {
       console.log(`Failed updating settings: ${e}`);
@@ -98,7 +98,6 @@ const ConfigView = ({ onApply = () => {} }) => {
     }
   };
 
-  // Use planning config as the "main" config (assuming all are the same when not in advanced mode)
   const mainConfig = llmConfig.planning;
 
   return (
