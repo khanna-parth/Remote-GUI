@@ -8,6 +8,7 @@ import ConfigView from "./ConfigView";
 import { sendConfiguration } from "./utils/network";
 import { sleep } from "../../utils/asyncUtils";
 import ChatExportView from "./chatcomponents/ChatExportView";
+import Sidebar from "./Sidebar";
 
 export const pluginMetadata = {
   name: "Chat",
@@ -67,11 +68,33 @@ const MCPPage = () => {
     <div
       style={{
         width: "100%",
-        height: "100%",
+        height: "100vh",
         overflow: "hidden",
+        display: 'flex',
+        flexDirection: 'row',
       }}
     >
-      {selectedChat ? <ChatView externalMessages={[]} /> : <ChatSelector />}
+      <div style={{
+        // position: 'relative',
+        // left: 0,
+        // padding: 0,
+        // margin: 0
+        height: '100%',
+        overflow: 'auto',
+        padding: 0,
+        margin: 0,
+      }}>
+        <Sidebar />
+      </div>
+      {selectedChat ? (
+        <div style={{
+          flex: 1,
+          height: '100%',
+          overflow: 'hidden'
+        }}>
+          <ChatView externalMessages={[]} />
+        </div>
+      ) : <></>}
       <Modal
         open={modalViewName !== null}
         onClose={() => setModalViewName(null)}
@@ -96,19 +119,6 @@ const MCPPage = () => {
   );
 };
 
-// const style = {
-//   position: "absolute",
-//   top: "50%",
-//   left: "50%",
-//   transform: "translate(-50%, -50%)",
-//   width: 1600,
-//   height: 1200,
-//   bgcolor: "background.paper",
-//   // border: '1px solid #000',
-//   boxShadow: 24,
-//   borderRadius: 6,
-//   p: 4,
-// };
 const style = {
   position: "absolute",
   top: "50%",

@@ -11,64 +11,12 @@ import { parseTimestamp } from "./utils/numerical";
 import { updateChat } from "./utils/storage";
 import { usePDFExport } from "./hooks/pdfExport";
 import ExportButton from "./chatcomponents/ExportPDFButton";
+import MemoizedMessage from "./chatcomponents/MemoizedMessage";
 
 const WS_COMMANDS = {
   GENERATE: "GENERATE",
   STOP: "STOP",
 };
-
-const MemoizedMessage = React.memo(({ msg, index }) => {
-  const isUser = msg.sender === "user";
-
-  return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: isUser ? "flex-end" : "flex-start",
-      }}
-    >
-      <div style={{ maxWidth: "100vw" }}>
-        <ChatMessage isUser={isUser} text={msg.text} />
-      </div>
-
-      {!isUser && msg.vis && (
-        <div style={{ position: "relative", width: "100%" }}>
-          {(Array.isArray(msg.vis) ? msg.vis : [msg.vis]).map(
-            (visualization, visIndex) => {
-              if (visualization.type === "chart" && visualization.chart_data) {
-                const currentChartData = cleanNullData(
-                  visualization.chart_data,
-                );
-                return (
-                  <RenderChart
-                    key={visIndex}
-                    chartData={currentChartData}
-                    visualization={visualization}
-                    chartIndex={visIndex}
-                  />
-                );
-              } else if (visualization.type === "table") {
-                return (
-                  <div key={visIndex} style={{ maxWidth: "80%" }}>
-                    <TableView
-                      tableTitle={visualization.tableData?.title}
-                      tableData={visualization.tableData}
-                    />
-                  </div>
-                );
-              }
-              return null;
-            },
-          )}
-        </div>
-      )}
-      <ChatAuthorView isUser={isUser} />
-    </div>
-  );
-});
-
-MemoizedMessage.displayName = "MemoizedMessage";
 
 const ChatView = () => {
   const [chatTitle, setChatTitle] = useState("");
@@ -81,10 +29,6 @@ const ChatView = () => {
   const setWsID = chatState((state) => state.setWsID);
   const currentExport = chatState((state) => state.currentExport);
   const setCurrentExport = chatState((state) => state.setCurrentExport);
-  
-
-  // const { selectedChat, clearSelectedChat, setModalViewName, setWsID, setCurrentExport } =
-  //   chatState();
 
   const [messages, setMessages] = useState([]);
 
@@ -357,24 +301,26 @@ const ChatView = () => {
     <div
       style={{
         width: "100%",
-        height: "100vh",
+        height: "100%",
         display: "flex",
         flexDirection: "column",
         fontFamily: "Arial, sans-serif",
         overflow: "hidden",
-        padding: "20px 0 0 0",
+        padding: 0,
         boxSizing: 'border-box',
       }}
     >
       <div
         style={{
           width: "100%",
+          // height: '80px',
           display: "flex",
           justifyContent: "space-between",
           borderBottom: "1px solid #e5e7eb",
           backgroundColor: "#fff",
           boxShadow: "0 2px 6px rgba(0,0,0,0.08)",
           alignItems: "center",
+          // padding: '0 16px'
           // marginTop: 20
         }}
       >
@@ -387,7 +333,7 @@ const ChatView = () => {
             alignItems: "center",
           }}
         >
-          <button
+          {/* <button
             style={{
               width: "60px",
               height: "60px",
@@ -406,8 +352,8 @@ const ChatView = () => {
               size={30}
               color="red"
             />
-          </button>
-          <div style={{ display: "flex", flexDirection: "column" }}>
+          </button> */}
+          <div style={{ display: "flex", flexDirection: "column", padding: 8 }}>
             <input
               value={chatTitle}
               onChange={(e) => setChatTitle(e.target.value)}
