@@ -36,8 +36,8 @@ export const usePDFExport = () => {
           useCORS: true,
           logging: false,
           backgroundColor: 'transparent',
-          width: 800,
-          windowWidth: 1000,
+          width: 1000,
+          windowWidth: 1200,
         });
 
         const imgData = canvas.toDataURL('image/png');
@@ -53,7 +53,7 @@ export const usePDFExport = () => {
         }
 
         pdf.addImage(imgData, 'PNG', margin, currentY, imgWidth, imgHeight);
-        currentY += imgHeight + 5;
+        currentY += imgHeight + 15;
       }
 
       const timestamp = new Date().toISOString().split('T')[0];

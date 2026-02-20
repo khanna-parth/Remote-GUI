@@ -158,7 +158,7 @@ class User(BaseModel):
     def charting_model(self) -> Model:
         return self.get_model(LLMRole.charting)
 
-    def tabulating_model(self) -> Model:
+    def tabular_model(self) -> Model:
         return self.get_model(LLMRole.tabulating)
 
     def mcp_model(self) -> Model:

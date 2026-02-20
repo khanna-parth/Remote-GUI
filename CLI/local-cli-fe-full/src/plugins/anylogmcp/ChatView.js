@@ -12,6 +12,7 @@ import { updateChat } from "./utils/storage";
 import { usePDFExport } from "./hooks/pdfExport";
 import ExportButton from "./chatcomponents/ExportPDFButton";
 import MemoizedMessage from "./chatcomponents/MemoizedMessage";
+import { normalizeChatHistory } from "./utils/normalize";
 
 const WS_COMMANDS = {
   GENERATE: "GENERATE",
@@ -65,12 +66,15 @@ const ChatView = () => {
     }
   }, [currentExport])
 
-  const sendWSCommand = (commandType, message = "") => {
+  const sendWSCommand = (commandType, messages = [], message = "") => {
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       const command = {
         command_type: commandType,
-        message: message,
+        message: `HISTORY: ${JSON.stringify(normalizeChatHistory(messages))}\n\n QUERY: ${message}`,
+        // message: `HISTORY: ${JSON.stringify(messages)}\n\n QUERY: ${message}`,
       };
+      console.log(`Sending to backend`);
+      console.log(command);
       wsRef.current.send(JSON.stringify(command));
       return true;
     }
@@ -274,7 +278,7 @@ const ChatView = () => {
     setGeneratingVis(null);
 
     try {
-      const success = sendWSCommand(WS_COMMANDS.GENERATE, msg);
+      const success = sendWSCommand(WS_COMMANDS.GENERATE, messages, msg);
 
       if (success) {
         console.log(`Awaiting reply for message #${messages.length}: ${msg}`);

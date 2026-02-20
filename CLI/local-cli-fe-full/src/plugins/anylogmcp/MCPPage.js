@@ -98,6 +98,9 @@ const MCPPage = () => {
       <Modal
         open={modalViewName !== null}
         onClose={() => setModalViewName(null)}
+        style={{
+          overflow: 'auto',
+        }}
       >
         <Box sx={style}>
           <div
@@ -109,6 +112,7 @@ const MCPPage = () => {
               background: "#fafafa",
               borderRadius: 12,
               border: "1px solid #e5e7eb",
+              overflow: 'auto',
             }}
           >
             {<ActiveComponent />}
@@ -128,7 +132,7 @@ const style = {
   maxHeight: '40vw',
   bgcolor: "background.paper",
   boxShadow: 24,
-  overflow: 'hidden',
+  overflow: 'auto',
   borderRadius: 3,
   p: 0,
 };

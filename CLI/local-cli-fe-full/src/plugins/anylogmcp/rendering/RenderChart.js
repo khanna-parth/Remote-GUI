@@ -3,9 +3,6 @@ import ChartView from "../../../components/ChartView";
 import ExpandableElement from "../ExpandableElement";
 
 const RenderChart = ({ chartData, visualization, chartIndex }) => {
-  useEffect(() => {
-    console.log(`Render Data: `, chartData);
-  })
   return (
     <div key={chartIndex} style={{ marginBottom: 16, width: '100%' }}>
       <ExpandableElement

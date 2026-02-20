@@ -38,8 +38,6 @@ export default function ChartView({ chartTitle, chartData, chartOptions, chartSt
   const chartRef = useRef(null);
 
   useEffect(() => {
-    console.log("Chart data:", chartData);
-
     if (!canvasRef.current) return;
 
     if (chartRef.current) {
