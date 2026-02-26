@@ -13,6 +13,7 @@ import { usePDFExport } from "./hooks/pdfExport";
 import ExportButton from "./chatcomponents/ExportPDFButton";
 import MemoizedMessage from "./chatcomponents/MemoizedMessage";
 import { normalizeChatHistory } from "./utils/normalize";
+import RenderTable from "./rendering/RenderTable";
 
 const WS_COMMANDS = {
   GENERATE: "GENERATE",
@@ -30,6 +31,8 @@ const ChatView = () => {
   const setWsID = chatState((state) => state.setWsID);
   const currentExport = chatState((state) => state.currentExport);
   const setCurrentExport = chatState((state) => state.setCurrentExport);
+
+  const setRefreshChats = chatState((state) => state.setRefreshChats);
 
   const [messages, setMessages] = useState([]);
 
@@ -53,18 +56,17 @@ const ChatView = () => {
 
   useEffect(() => {
     if (!currentExport || !currentExport.format) return;
-    
-    if (currentExport.format === "PDF") {
-      console.log('Exporting in PDF view format');
-      exportRenderToPDF(messagesContainerRef, `${chatTitle}` || 'chat');
-      setCurrentExport(currentExport.format, true);
 
+    if (currentExport.format === "PDF") {
+      console.log("Exporting in PDF view format");
+      exportRenderToPDF(messagesContainerRef, `${chatTitle}` || "chat");
+      setCurrentExport(currentExport.format, true);
     } else if (currentExport.format === "LOG") {
-      console.log('Exporting in PDF view format');
-      exportToPDFLog(messagesContainerRef, `${chatTitle}_LOG` || 'chat');
+      console.log("Exporting in PDF view format");
+      exportToPDFLog(messagesContainerRef, `${chatTitle}_LOG` || "chat");
       setCurrentExport(currentExport.format, true);
     }
-  }, [currentExport])
+  }, [currentExport]);
 
   const sendWSCommand = (commandType, messages = [], message = "") => {
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
@@ -86,6 +88,29 @@ const ChatView = () => {
       sendWSCommand(WS_COMMANDS.STOP);
       setIsGenerating(false);
       setStatus("Interrupted");
+      const newMessage = {
+        sender: "AnyLog AI",
+        text: "Message interrupted",
+      };
+
+      setMessages((prev) => {
+        const updatedMessages = [...prev, newMessage];
+
+        updateChat(
+          selectedChat.id,
+          {
+            messages: updatedMessages,
+          },
+          true,
+        );
+
+        return updatedMessages;
+      });
+
+      generatingBufferRef.current = "";
+      generatingVisRef.current = null;
+      setGeneratingBuffer("");
+      setIsGenerating(false);
 
       await sleep(1500);
       setStatus("");
@@ -133,9 +158,15 @@ const ChatView = () => {
     if (!chatTitle) return;
 
     const timeout = setTimeout(() => {
-      updateChat(selectedChat?.id, {
-        title: chatTitle,
-      });
+      updateChat(
+        selectedChat?.id,
+        {
+          title: chatTitle,
+        },
+        false,
+      );
+
+      setRefreshChats((prev) => !prev);
     }, 1000);
 
     return () => clearTimeout(timeout);
@@ -185,6 +216,7 @@ const ChatView = () => {
 
             generatingVisRef.current = updated;
             setGeneratingVis(updated);
+
             console.log("Chart data added to generating message");
             break;
           }
@@ -219,9 +251,13 @@ const ChatView = () => {
             setMessages((prev) => {
               const updatedMessages = [...prev, newMessage];
 
-              updateChat(selectedChat.id, {
-                messages: updatedMessages,
-              }, true);
+              updateChat(
+                selectedChat.id,
+                {
+                  messages: updatedMessages,
+                },
+                true,
+              );
 
               return updatedMessages;
             });
@@ -311,7 +347,7 @@ const ChatView = () => {
         fontFamily: "Arial, sans-serif",
         overflow: "hidden",
         padding: 0,
-        boxSizing: 'border-box',
+        boxSizing: "border-box",
       }}
     >
       <div
@@ -379,27 +415,26 @@ const ChatView = () => {
             </h2>
           </div>
         </div>
-        <div style={{
-          gap: 8,
-          display: 'flex',
-          flexDirection: 'row'
-        }}>
+        <div
+          style={{
+            gap: 8,
+            display: "flex",
+            flexDirection: "row",
+            marginRight: 8,
+            paddingRight: 8,
+          }}
+        >
           <ExportButton
             onClick={() => setModalViewName("ChatExporter")}
             disabled={messages.length === 0}
-            hint=''
+            hint=""
           />
-{/* 
+          {/* 
           <ExportButton
             onClick={handleExportRender}
             disabled={messages.length === 0}
             hint='PDF'
           /> */}
-          <IoCogSharp
-            style={{ cursor: "pointer", paddingRight: 4, marginRight: 4 }}
-            size={30}
-            onClick={() => setModalViewName("Config")}
-          />
         </div>
       </div>
 
@@ -457,7 +492,7 @@ const ChatView = () => {
                     } else if (visualization.type === "table") {
                       return (
                         <div key={visIndex} style={{ maxWidth: "80%" }}>
-                          <TableView
+                          <RenderTable
                             tableTitle={visualization.tableData?.title}
                             tableData={visualization.tableData}
                           />

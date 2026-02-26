@@ -15,6 +15,9 @@ const chatState = create((set) => ({
     set({ selectedChat: newChat });
   },
 
+  refreshChats: false,
+  setRefreshChats: (val) => set({ refreshChats: val }),
+
   modelSettings: null,
   setModelSettings: (settings) => set({ modelSettings: settings }),
 

@@ -10,6 +10,10 @@ const Sidebar = () => {
   const [searchValue, setSearchValue] = useState('');
   
   const selectedChat = chatState((state) => state.selectedChat);
+
+  const refreshChats = chatState((state) => state.refreshChats);
+  const setRefreshChats = chatState((state) => state.setRefreshChats);
+
   const [chats, setChats] = useState([]);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const { setSelectedChat, setNewChat, setModalViewName } = chatState();
@@ -20,6 +24,7 @@ const Sidebar = () => {
 
   useEffect(() => {
     const existingChats = getAllChats();
+    // console.log(`Existing chats:`, existingChats);
     if (!existingChats) {
       initializeChats(); 
       const defaultChats = getAllChats();
@@ -34,7 +39,8 @@ const Sidebar = () => {
         setChats([]);
       }
     }
-  }, [])
+
+  }, [refreshChats, selectedChat])
 
   const filteredChats = useMemo(() => {
     if (!Array.isArray(chats)) return [];
@@ -192,6 +198,8 @@ const Sidebar = () => {
         overflowY: 'auto',
         overflowX: 'hidden',
         padding: isCollapsed ? '8px 6px' : '8px 12px',
+        minWidth: 0,
+        width: '100%',
       }}>
         {chats.length === 0 ? (
           <div style={{
@@ -224,10 +232,11 @@ const Sidebar = () => {
             )}
           </div>
         ) : (
-          chats.map((chat, idx) => (
+          // chats.map((chat, idx) => (
+          filteredChats.map((chat, idx) => (
             <div 
               key={idx}
-              style={{}}
+              style={{ minWidth: 0, width: "100%", boxSizing: 'border-box' }} 
             >
                 <NewChatListEntry 
                 key={idx}

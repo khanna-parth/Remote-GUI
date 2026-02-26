@@ -4,6 +4,7 @@ import RenderChart from "../rendering/RenderChart";
 import TableView from "../rendering/TableView";
 import ChatAuthorView from "./ChatAuthorView";
 import { cleanNullData } from "../../../utils/chart_helpers";
+import RenderTable from "../rendering/RenderTable";
 
 const WS_COMMANDS = {
   GENERATE: "GENERATE",
@@ -44,7 +45,7 @@ const MemoizedMessage = React.memo(({ msg, index }) => {
               } else if (visualization.type === "table") {
                 return (
                   <div key={visIndex} style={{ maxWidth: "80%" }}>
-                    <TableView
+                    <RenderTable
                       tableTitle={visualization.tableData?.title}
                       tableData={visualization.tableData}
                     />
