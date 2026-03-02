@@ -1,28 +1,28 @@
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import "../styles/MarkdownTextBlock.css";
 
 const MarkdownTextBlock = ({ text, extraStyles = {} }) => {
   return (
-    <div style={{ fontSize: extraStyles.fontSize || 12, ...extraStyles.container }}>
+    <div
+      className="markdown-text-block"
+      style={extraStyles.fontSize ? { fontSize: extraStyles.fontSize } : undefined}
+    >
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
           code({ inline, children }) {
             return inline ? (
               <code
-                style={{
-                  ...styles.inlineCode,
-                  ...extraStyles.inlineCode,
-                }}
+                className="markdown-text-block__inline-code"
+                style={extraStyles.inlineCode}
               >
                 {children}
               </code>
             ) : (
               <pre
-                style={{
-                  ...styles.codeBlock,
-                  ...extraStyles.codeBlock,
-                }}
+                className="markdown-text-block__code-block"
+                style={extraStyles.codeBlock}
               >
                 <code>{children}</code>
               </pre>
@@ -35,23 +35,5 @@ const MarkdownTextBlock = ({ text, extraStyles = {} }) => {
     </div>
   );
 };
-
-const styles = {
-    inlineCode: {
-        background: "rgba(0,0,0,0.1)",
-        padding: "2px 4px",
-        borderRadius: "4px",
-        fontSize: "0.9em",
-    },
-    codeBlock: {
-        background: "#1e1e1e",
-        color: "#f8f8f2",
-        padding: "10px",
-        borderRadius: "8px",
-        overflowX: "auto",
-        fontSize: "13px",
-        marginTop: "8px",
-    }
-}
 
 export default MarkdownTextBlock;

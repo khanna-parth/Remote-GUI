@@ -1,0 +1,48 @@
+.expandable-element-container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.expandable-element-toggle {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  border: 1px solid gray;
+  border-radius: 8px;
+  background: none;
+  color: black;
+  padding: 4px 12px;
+  width: 100%;
+  cursor: pointer;
+  gap: 12px;
+}
+
+.expandable-element-title {
+  font-size: 14px;
+  font-weight: bold;
+  flex-grow: 1;
+  text-align: left;
+}
+
+.expandable-element-header {
+  display: flex;
+  align-items: center;
+}
+
+.expandable-element-arrow {
+  transition: transform 0.2s;
+  flex-shrink: 0;
+}
+
+.expandable-element-arrow--open {
+  transform: rotate(90deg);
+}
+
+.expandable-element-arrow--closed {
+  transform: rotate(0deg);
+}
+
+.expandable-element-content {
+  padding: 8px 4px;
+}

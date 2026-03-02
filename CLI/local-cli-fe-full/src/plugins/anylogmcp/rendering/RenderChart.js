@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import ChartView from "../../../components/ChartView";
-import ExpandableElement from "../ExpandableElement";
+import ExpandableElement from "../components/ExpandableElement";
 import { BsFiletypeCsv, BsFiletypeJson } from "react-icons/bs";
 
 const RenderChart = ({ chartData, visualization, chartIndex }) => {

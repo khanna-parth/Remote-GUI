@@ -1,0 +1,135 @@
+.chat-view-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  font-family: Arial, sans-serif;
+  overflow: hidden;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.chat-view-header {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  border-bottom: 1px solid #e5e7eb;
+  background-color: #fff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  align-items: center;
+}
+
+.chat-view-header-left {
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  justify-content: start;
+  align-items: center;
+}
+
+.chat-view-title-group {
+  display: flex;
+  flex-direction: column;
+  padding: 8px;
+}
+
+.chat-view-title-input {
+  font-size: 1.5rem;
+  font-weight: 600;
+  border: none;
+  outline: none;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  width: 100%;
+}
+
+.chat-view-last-accessed {
+  font-size: 14px;
+  color: gray;
+  margin: 0;
+}
+
+.chat-view-header-actions {
+  gap: 8px;
+  display: flex;
+  flex-direction: row;
+  margin-right: 8px;
+  padding-right: 8px;
+}
+
+.chat-view-messages {
+  flex: 1;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background-color: #f9f9f9;
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.chat-view-generating-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.chat-view-generating-message {
+  max-width: 100vw;
+}
+
+.chat-view-generating-vis {
+  position: relative;
+  width: 100%;
+}
+
+.chat-view-generating-table {
+  max-width: 80%;
+}
+
+.chat-view-status-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.chat-view-status-text {
+  font-size: 14px;
+}
+
+.chat-view-input-area {
+  display: flex;
+  background-color: #fff;
+  padding: 10px;
+  border-top: 1px solid #ccc;
+  box-sizing: border-box;
+}
+
+.chat-view-textarea {
+  flex: 1;
+  padding: 8px;
+  font-size: 14px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  outline: none;
+}
+
+.chat-view-send-button {
+  margin-left: 8px;
+  padding: 8px 12px;
+  font-size: 14px;
+  border-radius: 4px;
+  border: none;
+  color: #fff;
+  cursor: pointer;
+}
+
+.chat-view-send-button--sending {
+  background-color: #4f93ff;
+}
+
+.chat-view-send-button--generating {
+  background-color: #ff0000;
+}

@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import TableView from "./TableView";
-import ExpandableElement from "../ExpandableElement";
+import ExpandableElement from "../components/ExpandableElement";
 import { BsFiletypeCsv, BsFiletypeJson } from "react-icons/bs";
 
 const RenderTable = ({ tableTitle, tableData }) => {

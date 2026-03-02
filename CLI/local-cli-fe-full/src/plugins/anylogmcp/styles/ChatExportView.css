@@ -1,0 +1,43 @@
+.chat-export-view__options {
+  max-width: 100%;
+  max-height: 100%;
+  display: flex;
+  flex-direction: row;
+  padding: 4px;
+  justify-content: center;
+  align-items: center;
+  align-content: center;
+  gap: 32px;
+}
+
+.chat-export-view__option {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-content: center;
+  align-items: center;
+}
+
+.chat-export-view__feature-list {
+  width: 300px;
+  height: 300px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.chat-export-view__button {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  cursor: pointer;
+}
+
+.chat-export-view__divider {
+  width: 1px;
+  height: 400px;
+  background-color: #ddd;
+  align-self: stretch;
+}

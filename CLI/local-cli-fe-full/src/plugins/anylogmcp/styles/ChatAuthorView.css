@@ -1,0 +1,14 @@
+.chat-author-view {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #666;
+}
+
+.chat-author-view__avatar {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  display: block;
+}

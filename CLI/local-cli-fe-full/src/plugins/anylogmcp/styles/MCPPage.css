@@ -1,0 +1,46 @@
+.mcp-page-container {
+  width: 100%;
+  height: 100dvh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: row;
+  padding: 0;
+}
+
+.mcp-page-sidebar-wrapper {
+  height: 100%;
+  overflow: auto;
+  padding: 0;
+  margin: 0;
+}
+
+.mcp-page-chat-wrapper {
+  flex: 1;
+  height: 100%;
+  overflow: hidden;
+}
+
+.mcp-page-modal-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+  background: #fafafa;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  overflow: auto;
+}
+
+.mcp-page-modal-box {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  max-width: 90vw;
+  max-height: 40vw;
+  background-color: #fff;
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.2);
+  overflow: auto;
+  border-radius: 12px;
+  padding: 0;
+}

@@ -1,19 +1,18 @@
 import React, { useEffect, useState, useMemo, useRef } from "react";
-import RenderChart from "./rendering/RenderChart";
-import { cleanNullData } from "../../utils/chart_helpers";
-import ChatMessage from "./chatcomponents/ChatMessage";
-import ChatAuthorView from "./chatcomponents/ChatAuthorView";
-import TableView from "./rendering/TableView";
-import { sleep } from "../../utils/asyncUtils";
-import { IoCogSharp, IoReturnUpBack } from "react-icons/io5";
-import chatState from "./state/state";
-import { parseTimestamp } from "./utils/numerical";
-import { updateChat } from "./utils/storage";
-import { usePDFExport } from "./hooks/pdfExport";
-import ExportButton from "./chatcomponents/ExportPDFButton";
-import MemoizedMessage from "./chatcomponents/MemoizedMessage";
-import { normalizeChatHistory } from "./utils/normalize";
-import RenderTable from "./rendering/RenderTable";
+import RenderChart from "../rendering/RenderChart";
+import { cleanNullData } from "../../../utils/chart_helpers";
+import ChatMessage from "../chatcomponents/ChatMessage";
+import ChatAuthorView from "../chatcomponents/ChatAuthorView";
+import { sleep } from "../../../utils/asyncUtils";
+import chatState from "../state/state";
+import { parseTimestamp } from "../utils/numerical";
+import { updateChat } from "../utils/storage";
+import { usePDFExport } from "../hooks/pdfExport";
+import ExportButton from "../chatcomponents/ExportPDFButton";
+import MemoizedMessage from "../chatcomponents/MemoizedMessage";
+import { normalizeChatHistory } from "../utils/normalize";
+import RenderTable from "../rendering/RenderTable";
+import "../styles/ChatView.css";
 
 const WS_COMMANDS = {
   GENERATE: "GENERATE",
@@ -73,7 +72,6 @@ const ChatView = () => {
       const command = {
         command_type: commandType,
         message: `HISTORY: ${JSON.stringify(normalizeChatHistory(messages))}\n\n QUERY: ${message}`,
-        // message: `HISTORY: ${JSON.stringify(messages)}\n\n QUERY: ${message}`,
       };
       console.log(`Sending to backend`);
       console.log(command);
@@ -267,54 +265,47 @@ const ChatView = () => {
             generatingVisRef.current = null;
             setGeneratingBuffer("");
             setIsGenerating(false);
-            setStatus("");
-
-            console.log("Message completed");
             break;
           }
 
-          case "STATUS_UPDATE":
-            setStatus(dataStream.data);
-            break;
-
           default:
-            console.warn("Unknown marker:", dataStream.marker);
+            break;
         }
-      } catch (err) {
-        console.error("Failed to parse message:", event.data, err);
-        setIsGenerating(false);
+      } catch (e) {
+        console.error("Failed to parse message:", e);
       }
     };
 
-    wsRef.current.onclose = () => {
-      console.log("WebSocket disconnected");
-      setConnected(false);
-      setStatus("Disconnected from server");
-    };
-
-    wsRef.current.onerror = (err) => {
-      console.error("WebSocket error:", err);
-      setConnected(false);
+    wsRef.current.onerror = (error) => {
+      console.error("WebSocket error:", error);
       setStatus("Connection error");
     };
 
-    return () => {
-      wsRef.current?.close();
+    wsRef.current.onclose = () => {
+      console.log("WebSocket closed");
+      setConnected(false);
     };
-  }, [selectedChat, setWsID]);
+
+    return () => {
+      if (wsRef.current) {
+        wsRef.current.close();
+      }
+    };
+  }, [selectedChat?.id]);
 
   const handleSendMessage = (msg) => {
-    const userMessage = { sender: "user", text: msg };
-    setMessages((prev) => [...prev, userMessage]);
+    const newMessage = { sender: "User", text: msg };
+    const updatedMessages = [...messages, newMessage];
 
-    // Clear out buffers from previous message
+    setMessages(updatedMessages);
+    updateChat(selectedChat.id, { messages: updatedMessages }, true);
+
     generatingBufferRef.current = "";
-    generatingVisRef.current = null;
     setGeneratingBuffer("");
     setGeneratingVis(null);
 
     try {
-      const success = sendWSCommand(WS_COMMANDS.GENERATE, messages, msg);
+      const success = sendWSCommand(WS_COMMANDS.GENERATE, updatedMessages, msg);
 
       if (success) {
         console.log(`Awaiting reply for message #${messages.length}: ${msg}`);
@@ -337,139 +328,46 @@ const ChatView = () => {
     }
   };
 
+  const statusColor = connected ? (isGenerating ? "black" : "green") : "red";
+
   return (
-    <div
-      style={{
-        width: "100%",
-        height: "100%",
-        display: "flex",
-        flexDirection: "column",
-        fontFamily: "Arial, sans-serif",
-        overflow: "hidden",
-        padding: 0,
-        boxSizing: "border-box",
-      }}
-    >
-      <div
-        style={{
-          width: "100%",
-          // height: '80px',
-          display: "flex",
-          justifyContent: "space-between",
-          borderBottom: "1px solid #e5e7eb",
-          backgroundColor: "#fff",
-          boxShadow: "0 2px 6px rgba(0,0,0,0.08)",
-          alignItems: "center",
-          // padding: '0 16px'
-          // marginTop: 20
-        }}
-      >
-        <div
-          style={{
-            width: "100%",
-            display: "flex",
-            flexDirection: "row",
-            justifyContent: "start",
-            alignItems: "center",
-          }}
-        >
-          {/* <button
-            style={{
-              width: "60px",
-              height: "60px",
-              borderRadius: 10,
-              background: "none",
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-              border: "none",
-              cursor: "pointer",
-            }}
-            onClick={() => clearSelectedChat()}
-          >
-            <IoReturnUpBack
-              style={{ paddingRight: 4, marginRight: 4 }}
-              size={30}
-              color="red"
-            />
-          </button> */}
-          <div style={{ display: "flex", flexDirection: "column", padding: 8 }}>
+    <div className="chat-view-container">
+      <div className="chat-view-header">
+        <div className="chat-view-header-left">
+          <div className="chat-view-title-group">
             <input
               value={chatTitle}
               onChange={(e) => setChatTitle(e.target.value)}
-              style={{
-                fontSize: "1.5rem",
-                fontWeight: 600,
-                border: "none",
-                outline: "none",
-                background: "transparent",
-                padding: 0,
-                margin: 0,
-                width: "100%",
-              }}
+              className="chat-view-title-input"
             />
-            <h2 style={{ fontSize: "14px", color: "gray", margin: 0 }}>
+            <h2 className="chat-view-last-accessed">
               Last Accessed:{" "}
-              {parseTimestamp(selectedChat.lastAccessDate) ||
-                "Last Accessed: Unknown"}
+              {parseTimestamp(selectedChat.lastAccessDate) || "Unknown"}
             </h2>
           </div>
         </div>
-        <div
-          style={{
-            gap: 8,
-            display: "flex",
-            flexDirection: "row",
-            marginRight: 8,
-            paddingRight: 8,
-          }}
-        >
+        <div className="chat-view-header-actions">
           <ExportButton
             onClick={() => setModalViewName("ChatExporter")}
             disabled={messages.length === 0}
             hint=""
           />
-          {/* 
-          <ExportButton
-            onClick={handleExportRender}
-            disabled={messages.length === 0}
-            hint='PDF'
-          /> */}
         </div>
       </div>
 
-      <div
-        ref={messagesContainerRef}
-        style={{
-          flex: 1,
-          padding: "10px",
-          display: "flex",
-          flexDirection: "column",
-          gap: "8px",
-          backgroundColor: "#f9f9f9",
-          overflowY: "auto",
-          scrollbarWidth: "none",
-          msOverflowStyle: "none",
-        }}
-      >
+      <div ref={messagesContainerRef} className="chat-view-messages">
         {messages.map((msg, index) => (
           <MemoizedMessage key={index} msg={msg} index={index} />
         ))}
 
         {(generatingBuffer || generatingVis) && (
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "flex-start",
-            }}
-          >
-            <div style={{ maxWidth: "100vw" }}>
+          <div className="chat-view-generating-wrapper">
+            <div className="chat-view-generating-message">
               <ChatMessage isUser={false} text={generatingBuffer} />
             </div>
 
             {generatingVis && (
-              <div style={{ position: "relative", width: "100%" }}>
+              <div className="chat-view-generating-vis">
                 {(() => {
                   let genChartCounter = 0;
                   return (
@@ -491,7 +389,7 @@ const ChatView = () => {
                       );
                     } else if (visualization.type === "table") {
                       return (
-                        <div key={visIndex} style={{ maxWidth: "80%" }}>
+                        <div key={visIndex} className="chat-view-generating-table">
                           <RenderTable
                             tableTitle={visualization.tableData?.title}
                             tableData={visualization.tableData}
@@ -509,44 +407,18 @@ const ChatView = () => {
         )}
       </div>
 
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
+      <div className="chat-view-status-bar">
         {status.length > 0 && (
-          <h1
-            style={{
-              fontSize: 14,
-              color: connected ? (isGenerating ? "black" : "green") : "red",
-            }}
-          >
+          <h1 className="chat-view-status-text" style={{ color: statusColor }}>
             {status}
           </h1>
         )}
       </div>
 
-      <div
-        style={{
-          display: "flex",
-          backgroundColor: "#fff",
-          padding: "10px",
-          borderTop: "1px solid #ccc",
-          boxSizing: "border-box",
-        }}
-      >
+      <div className="chat-view-input-area">
         <textarea
           ref={inputRef}
-          style={{
-            flex: 1,
-            padding: "8px",
-            fontSize: "14px",
-            borderRadius: "4px",
-            border: "1px solid #ccc",
-            outline: "none",
-          }}
+          className="chat-view-textarea"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => {
@@ -559,16 +431,7 @@ const ChatView = () => {
           rows="3"
         />
         <button
-          style={{
-            marginLeft: "8px",
-            padding: "8px 12px",
-            fontSize: "14px",
-            borderRadius: "4px",
-            border: "none",
-            backgroundColor: isGenerating ? "#FF0000" : "#4f93ff",
-            color: "#fff",
-            cursor: "pointer",
-          }}
+          className={`chat-view-send-button ${isGenerating ? "chat-view-send-button--generating" : "chat-view-send-button--sending"}`}
           onClick={handleSend}
         >
           {isGenerating ? "Stop" : "Send"}

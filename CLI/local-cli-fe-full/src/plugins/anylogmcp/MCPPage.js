@@ -1,14 +1,14 @@
 import { useEffect, useState } from "react";
-import ChatSelector from "./ChatSelector";
-import ChatView from "./ChatView";
+import ChatView from "./components/ChatView";
 import chatState from "./state/state";
 import Modal from "@mui/material/Modal";
 import { Box } from "@mui/material";
-import ConfigView from "./ConfigView";
+import ConfigView from "./components/ConfigView";
 import { sendConfiguration } from "./utils/network";
 import { sleep } from "../../utils/asyncUtils";
 import ChatExportView from "./chatcomponents/ChatExportView";
-import Sidebar from "./Sidebar";
+import Sidebar from "./components/Sidebar";
+import "./styles/MCPPage.css";
 
 export const pluginMetadata = {
   name: "Chat",
@@ -64,77 +64,32 @@ const MCPPage = () => {
   useEffect(() => {
     console.log(`Component being rendered: ${modalViewName}`);
   }, [modalViewName]);
+
   return (
-    <div
-      style={{
-        width: "100%",
-        height: "100vh",
-        overflow: "hidden",
-        display: 'flex',
-        flexDirection: 'row',
-      }}
-    >
-      <div style={{
-        // position: 'relative',
-        // left: 0,
-        // padding: 0,
-        // margin: 0
-        height: '100%',
-        overflow: 'auto',
-        padding: 0,
-        margin: 0,
-      }}>
+    <div className="mcp-page-container">
+      <div className="mcp-page-sidebar-wrapper">
         <Sidebar />
       </div>
       {selectedChat ? (
-        <div style={{
-          flex: 1,
-          height: '100%',
-          overflow: 'hidden'
-        }}>
+        <div className="mcp-page-chat-wrapper">
           <ChatView externalMessages={[]} />
         </div>
-      ) : <></>}
+      ) : (
+        <></>
+      )}
       <Modal
         open={modalViewName !== null}
         onClose={() => setModalViewName(null)}
-        style={{
-          overflow: 'auto',
-        }}
+        style={{ overflow: "auto" }}
       >
-        <Box sx={style}>
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: 16,
-              padding: 16,
-              background: "#fafafa",
-              borderRadius: 12,
-              border: "1px solid #e5e7eb",
-              overflow: 'auto',
-            }}
-          >
-            {<ActiveComponent />}
+        <Box className="mcp-page-modal-box">
+          <div className="mcp-page-modal-inner">
+            {ActiveComponent && <ActiveComponent />}
           </div>
         </Box>
       </Modal>
     </div>
   );
-};
-
-const style = {
-  position: "absolute",
-  top: "50%",
-  left: "50%",
-  transform: "translate(-50%, -50%)",
-  maxWidth: '90vw',
-  maxHeight: '40vw',
-  bgcolor: "background.paper",
-  boxShadow: 24,
-  overflow: 'auto',
-  borderRadius: 3,
-  p: 0,
 };
 
 export default MCPPage;

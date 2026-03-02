@@ -1,0 +1,32 @@
+.chat-message {
+  display: flex;
+  flex-direction: column;
+}
+
+.chat-message--user {
+  align-items: flex-end;
+}
+
+.chat-message--ai {
+  align-items: flex-start;
+}
+
+.chat-message__bubble {
+  max-width: 100%;
+  padding: 6px 14px;
+  border-radius: 6px;
+  line-height: 1.5;
+  font-size: 12px;
+  margin-bottom: 6px;
+  word-break: break-word;
+}
+
+.chat-message__bubble--user {
+  background-color: #4f93ff;
+  color: #fff;
+}
+
+.chat-message__bubble--ai {
+  background-color: #e5e5ea;
+  color: #000;
+}

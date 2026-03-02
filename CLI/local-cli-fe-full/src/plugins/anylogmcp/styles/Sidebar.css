@@ -1,0 +1,228 @@
+.sidebar-container {
+  height: 100dvh;
+  background: #ffffff;
+  border-right: 1px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
+  position: relative;
+  overflow: hidden;
+  transition: width 0.3s ease;
+  padding: 0;
+}
+
+.sidebar-container--expanded {
+  width: 320px;
+}
+
+.sidebar-container--collapsed {
+  width: 80px;
+}
+
+.sidebar-header {
+  border-bottom: 1px solid #e2e8f0;
+  background: #ffffff;
+}
+
+.sidebar-header--expanded {
+  padding: 16px;
+}
+
+.sidebar-header--collapsed {
+  padding: 16px 12px;
+}
+
+.sidebar-header-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sidebar-header-top--expanded {
+  margin-bottom: 16px;
+  flex-direction: row;
+  gap: 0;
+}
+
+.sidebar-header-top--collapsed {
+  margin-bottom: 0;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sidebar-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0;
+}
+
+.sidebar-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.sidebar-actions--expanded {
+  flex-direction: row;
+}
+
+.sidebar-actions--collapsed {
+  flex-direction: column;
+}
+
+.sidebar-new-chat-button {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: #6366f1;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s ease;
+  margin: 0;
+  padding: 0;
+}
+
+.sidebar-settings-button {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: #f1f5f9;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s ease;
+  margin: 0;
+  padding: 0;
+}
+
+.sidebar-search-wrapper {
+ position: relative;
+  display: flex;
+  flex-direction: row;
+}
+
+.sidebar-search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 18px;
+  transition: color 0.2s ease;
+  pointer-events: none;
+}
+
+.sidebar-search-icon--focused {
+  color: #6366f1;
+}
+
+.sidebar-search-icon--unfocused {
+  color: #94a3b8;
+}
+
+.sidebar-search-input {
+  width: 100%;
+  padding: 10px 12px 10px 40px;
+  font-size: 14px;
+  color: #0f172a;
+  border-radius: 10px;
+  outline: none;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.sidebar-search-input--focused {
+  background: #ffffff;
+  border: 2px solid #6366f1;
+}
+
+.sidebar-search-input--unfocused {
+  background: #f1f5f9;
+  border: 2px solid transparent;
+}
+
+.sidebar-list {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-width: 0;
+  width: 100%;
+}
+
+.sidebar-list--expanded {
+  padding: 8px 12px;
+}
+
+.sidebar-list--collapsed {
+  padding: 8px 6px;
+}
+
+.sidebar-empty-state {
+  text-align: center;
+}
+
+.sidebar-empty-state--expanded {
+  padding: 40px 20px;
+}
+
+.sidebar-empty-state--collapsed {
+  padding: 20px 10px;
+}
+
+.sidebar-empty-icon {
+  opacity: 0.5;
+}
+
+.sidebar-empty-icon--expanded {
+  font-size: 36px;
+  margin-bottom: 12px;
+}
+
+.sidebar-empty-icon--collapsed {
+  font-size: 24px;
+  margin-bottom: 0;
+}
+
+.sidebar-empty-title {
+  font-size: 14px;
+  color: #64748b;
+  font-weight: 500;
+  margin: 0;
+}
+
+.sidebar-empty-subtitle {
+  font-size: 13px;
+  color: #94a3b8;
+  margin: 6px 0 0 0;
+}
+
+.sidebar-chat-item {
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.sidebar-collapse-button {
+  position: absolute;
+  top: 50%;
+  right: -12px;
+  transform: translateY(-50%);
+  width: 24px;
+  height: 48px;
+  border-radius: 0 12px 12px 0;
+  background: #6366f1;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s ease;
+  z-index: 10;
+  margin: 8px;
+  padding: 4px;
+}

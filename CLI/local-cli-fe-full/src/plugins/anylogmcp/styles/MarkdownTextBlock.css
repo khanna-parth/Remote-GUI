@@ -1,0 +1,20 @@
+.markdown-text-block {
+  font-size: 12px;
+}
+
+.markdown-text-block__inline-code {
+  background: rgba(0, 0, 0, 0.1);
+  padding: 2px 4px;
+  border-radius: 4px;
+  font-size: 0.9em;
+}
+
+.markdown-text-block__code-block {
+  background: #1e1e1e;
+  color: #f8f8f2;
+  padding: 10px;
+  border-radius: 8px;
+  overflow-x: auto;
+  font-size: 13px;
+  margin-top: 8px;
+}

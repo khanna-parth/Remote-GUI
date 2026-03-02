@@ -1,30 +1,18 @@
-import React from 'react';
-import { IoDownloadOutline } from 'react-icons/io5';
+import React from "react";
+import { IoDownloadOutline } from "react-icons/io5";
+import "../styles/ExportPDFButton.css";
 
 const ExportButton = ({ onClick, disabled = false, hint }) => {
-    return (
-        <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'center',
-            alignContent: 'center',
-            alignItems: 'center',
-        }}>
-            <IoDownloadOutline
-                style={{
-                    cursor: disabled ? "not-allowed" : "pointer",
-                    opacity: disabled ? 0.5 : 1,
-                    margin: 0
-                }}
-                size={24}
-                onClick={disabled ? undefined : onClick}
-            />
-            <span style={{
-                fontSize: 10,
-                margin: 0
-            }}>{hint}</span>
-        </div>
-    );
-}
+  return (
+    <div className="export-button">
+      <IoDownloadOutline
+        className={`export-button__icon ${disabled ? "export-button__icon--disabled" : "export-button__icon--enabled"}`}
+        size={24}
+        onClick={disabled ? undefined : onClick}
+      />
+      <span className="export-button__hint">{hint}</span>
+    </div>
+  );
+};
 
 export default ExportButton;

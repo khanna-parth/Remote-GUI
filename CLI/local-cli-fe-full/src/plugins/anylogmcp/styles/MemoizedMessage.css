@@ -1,0 +1,25 @@
+.memoized-message {
+  display: flex;
+  flex-direction: column;
+}
+
+.memoized-message--user {
+  align-items: flex-end;
+}
+
+.memoized-message--ai {
+  align-items: flex-start;
+}
+
+.memoized-message__text {
+  max-width: 100vw;
+}
+
+.memoized-message__vis {
+  position: relative;
+  width: 100%;
+}
+
+.memoized-message__table {
+  max-width: 80%;
+}
