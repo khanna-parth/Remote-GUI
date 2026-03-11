@@ -7,7 +7,7 @@ import RenderTable from "../rendering/RenderTable";
 import "../styles/MemoizedMessage.css";
 
 const MemoizedMessage = React.memo(({ msg, index }) => {
-  const isUser = msg.sender === "user";
+  const isUser = msg.sender === "User";
 
   return (
     <div className={`memoized-message ${isUser ? "memoized-message--user" : "memoized-message--ai"}`}>

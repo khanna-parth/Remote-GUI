@@ -1,7 +1,5 @@
 from typing import TYPE_CHECKING, List
 
-from pydantic_ai import RunContext
-
 from plugins.anylogmcp.agents.base import StreamingMarker
 from plugins.anylogmcp.agents.core.types import AnylogAgentDeps
 from plugins.anylogmcp.agents.visualization.charts.charting_agent import (
@@ -10,6 +8,7 @@ from plugins.anylogmcp.agents.visualization.charts.charting_agent import (
 from plugins.anylogmcp.agents.visualization.tables.tabular_agent import (
     GenerateTableRequest,
 )
+from pydantic_ai import RunContext
 
 if TYPE_CHECKING:
     from plugins.anylogmcp.agents.core.core_agent import AnylogAgent
@@ -35,6 +34,14 @@ def setup_interagent_tools(agent: "AnylogAgent"):
 
             if ctx.deps.resultFn:
                 await ctx.deps.resultFn(
+                    {
+                        "tool_id": ctx.tool_call_id,
+                        "tool_name": f"Plotting: {plot.plot_title}",
+                        "tool_status": "START",
+                    },
+                    StreamingMarker.TOOL_EVENT,
+                )
+                await ctx.deps.resultFn(
                     f"Plotting: {plot.plot_title}", StreamingMarker.STATUS_UPDATE
                 )
             try:
@@ -51,6 +58,15 @@ def setup_interagent_tools(agent: "AnylogAgent"):
                     print(chart)
 
                     if ctx.deps.resultFn:
+                        await ctx.deps.resultFn(
+                            {
+                                "tool_id": ctx.tool_call_id,
+                                "tool_name": f"Plotting: {plot.plot_title}",
+                                "tool_status": "END",
+                            },
+                            StreamingMarker.TOOL_EVENT,
+                        )
+
                         await ctx.deps.resultFn(
                             chart.model_dump(), StreamingMarker.CHART_DATA
                         )
@@ -87,6 +103,15 @@ def setup_interagent_tools(agent: "AnylogAgent"):
                 StreamingMarker.STATUS_UPDATE,
             )
 
+            await ctx.deps.resultFn(
+                {
+                    "tool_id": ctx.tool_call_id,
+                    "tool_name": f"Constructing: {table_request.table_title}",
+                    "tool_status": "START",
+                },
+                StreamingMarker.TOOL_EVENT,
+            )
+
         try:
             table_result = await ctx.deps.tabular_agent.generate_table(
                 f"Create me a table of this data: {table_request}",
@@ -100,8 +125,18 @@ def setup_interagent_tools(agent: "AnylogAgent"):
             print(table_result)
             if ctx.deps.resultFn:
                 await ctx.deps.resultFn(
+                    {
+                        "tool_id": ctx.tool_call_id,
+                        "tool_name": f"Constructing: {table_result.title}",
+                        "tool_status": "END",
+                    },
+                    StreamingMarker.TOOL_EVENT,
+                )
+
+                await ctx.deps.resultFn(
                     table_result.model_dump(), StreamingMarker.TABLE_DATA
                 )
+
             return "SUCCESS: Table successfully generated. Continue with your response."
 
         except Exception as e:
@@ -135,6 +170,7 @@ def setup_interagent_tools(agent: "AnylogAgent"):
             print(task_result)
 
             # await ctx.deps.resultFn(task_result, StreamingMarker.CHUNK)
+
             return f"Task results: {task_result}"
 
         except Exception as e:

@@ -7,7 +7,7 @@ export const initializeChats = () => {
   const rawChats = localStorage.getItem(CHAT_STORAGE_PREFIX);
   if (!rawChats) {
     const parsedMessages = helpMessages.map((sample_message, idx) => {
-      return { text: sample_message, sender: idx % 2 == 0 ? 'user' : 'AnyLog AI' }
+      return { text: sample_message, sender: idx % 2 == 0 ? 'User' : 'AnyLog AI' }
     })
     const defaultChats = [
       {

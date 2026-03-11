@@ -4,13 +4,6 @@ from typing import Optional, Union
 
 import httpx
 from dotenv import load_dotenv
-from pydantic import BaseModel
-from pydantic_ai import Agent
-from pydantic_ai.mcp import MCPServerSSE, MCPServerStdio, MCPServerStreamableHTTP
-from pydantic_ai.models import Model
-from pydantic_ai.models.openai import OpenAIChatModel
-from pydantic_ai.providers.openai import OpenAIProvider
-
 from plugins.anylogmcp.agents.base import ResultFn, StreamingMarker
 from plugins.anylogmcp.agents.configuration import User
 from plugins.anylogmcp.agents.core.sys_prompt import CORE_PROMPT
@@ -23,6 +16,12 @@ from plugins.anylogmcp.agents.visualization.charts.charting_agent import (
 from plugins.anylogmcp.agents.visualization.tables.tabular_agent import (
     create_tabular_agent,
 )
+from pydantic import BaseModel
+from pydantic_ai import Agent
+from pydantic_ai.mcp import MCPServerSSE, MCPServerStdio, MCPServerStreamableHTTP
+from pydantic_ai.models import Model
+from pydantic_ai.models.openai import OpenAIChatModel
+from pydantic_ai.providers.openai import OpenAIProvider
 
 load_dotenv(
     "/Users/khanna/Documents/UCSC/CSE_115B/Remote-GUI/CLI/local-cli-backend/plugins/anylogmcp/.env"
@@ -85,7 +84,7 @@ async def run_core_agent(
     agent: AnylogAgent, prompt: str, resultFn: ResultFn, user_settings: User
 ):
     # agent.agent_deps.resultFn = resultFn
-    # agent.agent_deps.mcp_agent.on_tool_call = resultFn
+    agent.agent_deps.mcp_agent.on_tool_call = resultFn
 
     run_deps = AnylogAgentDeps(
         resultFn=resultFn,

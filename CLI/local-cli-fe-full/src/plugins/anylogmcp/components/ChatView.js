@@ -13,6 +13,9 @@ import MemoizedMessage from "../chatcomponents/MemoizedMessage";
 import { normalizeChatHistory } from "../utils/normalize";
 import RenderTable from "../rendering/RenderTable";
 import "../styles/ChatView.css";
+import { IoSend } from "react-icons/io5";
+import { IoStop } from "react-icons/io5";
+import ToolStatusMarker from "../chatcomponents/ToolStatusMarker";
 
 const WS_COMMANDS = {
   GENERATE: "GENERATE",
@@ -38,17 +41,16 @@ const ChatView = () => {
   const wsRef = useRef(null);
   const [connected, setConnected] = useState(false);
 
-  // Show text while its generating
   const generatingBufferRef = useRef("");
   const [generatingBuffer, setGeneratingBuffer] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
 
-  // TODO: Show table while its being outputted
   const generatingVisRef = useRef(null);
   const [generatingVis, setGeneratingVis] = useState(null);
 
-  // Connected to backend WS status(ready-state, etc)
   const [status, setStatus] = useState("");
+
+  const liveToolEventsRef = useRef({});
 
   const messagesContainerRef = useRef(null);
   const { exportRenderToPDF, exportToPDFLog } = usePDFExport();
@@ -57,11 +59,9 @@ const ChatView = () => {
     if (!currentExport || !currentExport.format) return;
 
     if (currentExport.format === "PDF") {
-      console.log("Exporting in PDF view format");
       exportRenderToPDF(messagesContainerRef, `${chatTitle}` || "chat");
       setCurrentExport(currentExport.format, true);
     } else if (currentExport.format === "LOG") {
-      console.log("Exporting in PDF view format");
       exportToPDFLog(messagesContainerRef, `${chatTitle}_LOG` || "chat");
       setCurrentExport(currentExport.format, true);
     }
@@ -71,10 +71,8 @@ const ChatView = () => {
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       const command = {
         command_type: commandType,
-        message: `HISTORY: ${JSON.stringify(normalizeChatHistory(messages))}\n\n QUERY: ${message}`,
+        message: `HISTORY: ${JSON.stringify(normalizeChatHistory(messages.map(m => ({ ...m }))))}\n\n QUERY: ${message}`,
       };
-      console.log(`Sending to backend`);
-      console.log(command);
       wsRef.current.send(JSON.stringify(command));
       return true;
     }
@@ -93,15 +91,7 @@ const ChatView = () => {
 
       setMessages((prev) => {
         const updatedMessages = [...prev, newMessage];
-
-        updateChat(
-          selectedChat.id,
-          {
-            messages: updatedMessages,
-          },
-          true,
-        );
-
+        updateChat(selectedChat.id, { messages: updatedMessages }, true);
         return updatedMessages;
       });
 
@@ -109,6 +99,8 @@ const ChatView = () => {
       generatingVisRef.current = null;
       setGeneratingBuffer("");
       setIsGenerating(false);
+
+      liveToolEventsRef.current = {};
 
       await sleep(1500);
       setStatus("");
@@ -119,9 +111,12 @@ const ChatView = () => {
 
     handleSendMessage(input);
     setInput("");
+
+    if (inputRef.current) {
+      inputRef.current.style.height = "auto";
+    }
   };
 
-  // Avoid retriggering rendering process within React when visualizations are being shown
   const generatingCharts = useMemo(() => {
     if (!generatingVis) return null;
 
@@ -142,7 +137,6 @@ const ChatView = () => {
     return null;
   }, [generatingVis]);
 
-  // Visualization delay to prevent React overwriting visualizations
   useEffect(() => {
     if (!isGenerating && generatingVis) {
       const timer = setTimeout(() => {
@@ -156,14 +150,7 @@ const ChatView = () => {
     if (!chatTitle) return;
 
     const timeout = setTimeout(() => {
-      updateChat(
-        selectedChat?.id,
-        {
-          title: chatTitle,
-        },
-        false,
-      );
-
+      updateChat(selectedChat?.id, { title: chatTitle }, false);
       setRefreshChats((prev) => !prev);
     }, 1000);
 
@@ -171,17 +158,14 @@ const ChatView = () => {
   }, [chatTitle, selectedChat?.id]);
 
   useEffect(() => {
-    console.log(
-      `Loading chat history of length: ${selectedChat?.messages?.length || 0}`,
-    );
-
     setChatTitle(selectedChat?.title || "");
     setMessages(selectedChat?.messages || []);
+
+    liveToolEventsRef.current = {};
 
     wsRef.current = new WebSocket("ws://localhost:8000/mcp/chat");
 
     wsRef.current.onopen = async () => {
-      console.log("Connected to WebSocket");
       inputRef.current?.focus();
       await sleep(2000);
       setStatus("Connected to server");
@@ -195,7 +179,6 @@ const ChatView = () => {
 
         if (dataStream.id) {
           setWsID(dataStream.id);
-          console.log(`Received ID from server: ${dataStream.id}`);
         }
 
         switch (dataStream.marker) {
@@ -211,28 +194,48 @@ const ChatView = () => {
                 ? [...generatingVisRef.current, newVis]
                 : [generatingVisRef.current, newVis]
               : newVis;
-
             generatingVisRef.current = updated;
             setGeneratingVis(updated);
-
-            console.log("Chart data added to generating message");
             break;
           }
 
           case "TABLE_DATA": {
-            const newVis = {
-              tableData: { ...dataStream.data },
-              type: "table",
-            };
+            const newVis = { tableData: { ...dataStream.data }, type: "table" };
             const updated = generatingVisRef.current
               ? Array.isArray(generatingVisRef.current)
                 ? [...generatingVisRef.current, newVis]
                 : [generatingVisRef.current, newVis]
               : newVis;
-
             generatingVisRef.current = updated;
             setGeneratingVis(updated);
-            console.log("Table data added to generating message");
+            break;
+          }
+
+          case "TOOL_EVENT": {
+            const { tool_id, tool_name, tool_status } = dataStream.data ?? dataStream;
+            if (!tool_id) break;
+
+            const existingIndex = liveToolEventsRef.current[tool_id];
+
+            if (existingIndex !== undefined) {
+              setMessages((prev) => {
+                const updated = [...prev];
+                updated[existingIndex] = {
+                  ...updated[existingIndex],
+                  tool_status,
+                };
+                return updated;
+              });
+            } else {
+              setMessages((prev) => {
+                const newIndex = prev.length;
+                liveToolEventsRef.current[tool_id] = newIndex;
+                return [
+                  ...prev,
+                  { type: "tool_event", tool_id, tool_name, tool_status },
+                ];
+              });
+            }
             break;
           }
 
@@ -248,23 +251,16 @@ const ChatView = () => {
 
             setMessages((prev) => {
               const updatedMessages = [...prev, newMessage];
-
-              updateChat(
-                selectedChat.id,
-                {
-                  messages: updatedMessages,
-                },
-                true,
-              );
-
+              updateChat(selectedChat.id, { messages: updatedMessages }, true);
               return updatedMessages;
             });
 
-            // Reset generation state
             generatingBufferRef.current = "";
             generatingVisRef.current = null;
             setGeneratingBuffer("");
             setIsGenerating(false);
+
+            liveToolEventsRef.current = {};
             break;
           }
 
@@ -276,20 +272,16 @@ const ChatView = () => {
       }
     };
 
-    wsRef.current.onerror = (error) => {
-      console.error("WebSocket error:", error);
+    wsRef.current.onerror = () => {
       setStatus("Connection error");
     };
 
     wsRef.current.onclose = () => {
-      console.log("WebSocket closed");
       setConnected(false);
     };
 
     return () => {
-      if (wsRef.current) {
-        wsRef.current.close();
-      }
+      if (wsRef.current) wsRef.current.close();
     };
   }, [selectedChat?.id]);
 
@@ -304,20 +296,18 @@ const ChatView = () => {
     setGeneratingBuffer("");
     setGeneratingVis(null);
 
+    liveToolEventsRef.current = {};
+
     try {
       const success = sendWSCommand(WS_COMMANDS.GENERATE, updatedMessages, msg);
 
       if (success) {
-        console.log(`Awaiting reply for message #${messages.length}: ${msg}`);
         setIsGenerating(true);
         setStatus("");
       } else {
         setMessages((prev) => [
           ...prev,
-          {
-            sender: "system",
-            text: "Failed to generate message: corrupted connection",
-          },
+          { sender: "system", text: "Failed to generate message: corrupted connection" },
         ]);
       }
     } catch (e) {
@@ -328,10 +318,15 @@ const ChatView = () => {
     }
   };
 
-  const statusColor = connected ? (isGenerating ? "black" : "green") : "red";
+  const statusColor = connected
+    ? isGenerating
+      ? "var(--cv-text-secondary)"
+      : "var(--cv-status-connected)"
+    : "var(--cv-danger)";
 
   return (
     <div className="chat-view-container">
+
       <div className="chat-view-header">
         <div className="chat-view-header-left">
           <div className="chat-view-title-group">
@@ -339,13 +334,17 @@ const ChatView = () => {
               value={chatTitle}
               onChange={(e) => setChatTitle(e.target.value)}
               className="chat-view-title-input"
+              placeholder="Untitled chat"
             />
-            <h2 className="chat-view-last-accessed">
-              Last Accessed:{" "}
-              {parseTimestamp(selectedChat.lastAccessDate) || "Unknown"}
-            </h2>
+            <span className="chat-view-header-sep" aria-hidden="true" />
+            <span className="chat-view-last-accessed">
+              {parseTimestamp(selectedChat.lastAccessDate)
+                ? parseTimestamp(selectedChat.lastAccessDate)
+                : "Never accessed"}
+            </span>
           </div>
         </div>
+
         <div className="chat-view-header-actions">
           <ExportButton
             onClick={() => setModalViewName("ChatExporter")}
@@ -356,9 +355,19 @@ const ChatView = () => {
       </div>
 
       <div ref={messagesContainerRef} className="chat-view-messages">
-        {messages.map((msg, index) => (
-          <MemoizedMessage key={index} msg={msg} index={index} />
-        ))}
+        {messages.map((msg, index) => {
+          if (msg.type === "tool_event") {
+            return (
+              <div key={`tool-${msg.tool_id}-${index}`} className="chat-view-tool-event-row">
+                <ToolStatusMarker
+                  toolName={msg.tool_name}
+                  status={msg.tool_status}
+                />
+              </div>
+            );
+          }
+          return <MemoizedMessage key={index} msg={msg} index={index} />;
+        })}
 
         {(generatingBuffer || generatingVis) && (
           <div className="chat-view-generating-wrapper">
@@ -371,13 +380,10 @@ const ChatView = () => {
                 {(() => {
                   let genChartCounter = 0;
                   return (
-                    Array.isArray(generatingVis)
-                      ? generatingVis
-                      : [generatingVis]
+                    Array.isArray(generatingVis) ? generatingVis : [generatingVis]
                   ).map((visualization, visIndex) => {
                     if (visualization.type === "chart") {
-                      const currentChartData =
-                        generatingCharts?.[genChartCounter];
+                      const currentChartData = generatingCharts?.[genChartCounter];
                       genChartCounter++;
                       return (
                         <RenderChart
@@ -402,6 +408,7 @@ const ChatView = () => {
                 })()}
               </div>
             )}
+
             <ChatAuthorView isUser={false} />
           </div>
         )}
@@ -409,33 +416,44 @@ const ChatView = () => {
 
       <div className="chat-view-status-bar">
         {status.length > 0 && (
-          <h1 className="chat-view-status-text" style={{ color: statusColor }}>
+          <p className="chat-view-status-text" style={{ color: statusColor }}>
             {status}
-          </h1>
+          </p>
         )}
       </div>
 
       <div className="chat-view-input-area">
-        <textarea
-          ref={inputRef}
-          className="chat-view-textarea"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();
-              handleSend();
-            }
-          }}
-          placeholder="Type a message..."
-          rows="3"
-        />
-        <button
-          className={`chat-view-send-button ${isGenerating ? "chat-view-send-button--generating" : "chat-view-send-button--sending"}`}
-          onClick={handleSend}
-        >
-          {isGenerating ? "Stop" : "Send"}
-        </button>
+        <div className="chat-view-input-wrapper">
+          <textarea
+            ref={inputRef}
+            className="chat-view-textarea"
+            value={input}
+            onChange={(e) => {
+              setInput(e.target.value);
+              e.target.style.height = "auto";
+              e.target.style.height = `${e.target.scrollHeight}px`;
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                handleSend();
+              }
+            }}
+            placeholder="Ask anything…"
+            rows={1}
+          />
+          <button
+            className={`chat-view-send-button ${
+              isGenerating
+                ? "chat-view-send-button--generating"
+                : "chat-view-send-button--sending"
+            }`}
+            onClick={handleSend}
+            title={isGenerating ? "Stop" : "Send"}
+          >
+            {isGenerating ? <IoStop size={16}/> : <IoSend size={16} />}
+          </button>
+        </div>
       </div>
     </div>
   );

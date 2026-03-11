@@ -1,0 +1,84 @@
+/* ─── Tool Event Entry ─── */
+.tool-event-entry {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 10px 5px 7px;
+  border-radius: 20px;
+  border: 1px solid transparent;
+  max-width: fit-content;
+  transition: background-color 0.25s, border-color 0.25s, opacity 0.25s;
+  font-family: var(--cv-mono, 'DM Mono', monospace);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  user-select: none;
+}
+
+/* Running state */
+.tool-event-entry--running {
+  background-color: #f5f3ef;
+  border-color: #ddd9d3;
+  color: #7a7570;
+}
+
+/* Done state */
+.tool-event-entry--done {
+  background-color: #f0f4f1;
+  border-color: #c8ddd0;
+  color: #2d6a4f;
+  opacity: 0.82;
+}
+
+/* ─── Icon area ─── */
+.tool-event-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+/* Spinner animation */
+.tool-event-spinner {
+  width: 14px;
+  height: 14px;
+  animation: tool-spin 0.9s linear infinite;
+  color: #7a7570;
+}
+
+@keyframes tool-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* Checkmark */
+.tool-event-check {
+  width: 14px;
+  height: 14px;
+  color: #2d6a4f;
+  animation: tool-check-pop 0.22s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+@keyframes tool-check-pop {
+  from { transform: scale(0.6); opacity: 0; }
+  to   { transform: scale(1);   opacity: 1; }
+}
+
+/* ─── Body ─── */
+.tool-event-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.tool-event-label {
+  white-space: nowrap;
+  line-height: 1;
+}
+
+.tool-event-name {
+  font-weight: 500;
+  color: inherit;
+}
