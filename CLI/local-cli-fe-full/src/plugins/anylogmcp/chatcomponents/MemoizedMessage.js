@@ -5,12 +5,15 @@ import ChatAuthorView from "./ChatAuthorView";
 import { cleanNullData } from "../../../utils/chart_helpers";
 import RenderTable from "../rendering/RenderTable";
 import "../styles/MemoizedMessage.css";
+import MessageActions from "./MessageActions";
 
 const MemoizedMessage = React.memo(({ msg, index }) => {
   const isUser = msg.sender === "User";
 
   return (
-    <div className={`memoized-message ${isUser ? "memoized-message--user" : "memoized-message--ai"}`}>
+    <div
+      className={`memoized-message ${isUser ? "memoized-message--user" : "memoized-message--ai"}`}
+    >
       <div className="memoized-message__text">
         <ChatMessage isUser={isUser} text={msg.text} />
       </div>
@@ -20,7 +23,9 @@ const MemoizedMessage = React.memo(({ msg, index }) => {
           {(Array.isArray(msg.vis) ? msg.vis : [msg.vis]).map(
             (visualization, visIndex) => {
               if (visualization.type === "chart" && visualization.chart_data) {
-                const currentChartData = cleanNullData(visualization.chart_data);
+                const currentChartData = cleanNullData(
+                  visualization.chart_data,
+                );
                 return (
                   <RenderChart
                     key={visIndex}
@@ -44,6 +49,11 @@ const MemoizedMessage = React.memo(({ msg, index }) => {
           )}
         </div>
       )}
+      <MessageActions
+        isUser={isUser}
+        message={msg.text}
+        copyResponseCallback={() => {}}
+      />
       <ChatAuthorView isUser={isUser} />
     </div>
   );

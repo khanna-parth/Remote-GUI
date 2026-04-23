@@ -1,14 +1,15 @@
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING
 
-from plugins.anylogmcp.agents.base import StreamingMarker
-from plugins.anylogmcp.agents.core.types import AnylogAgentDeps
-from plugins.anylogmcp.agents.visualization.charts.charting_agent import (
+from pydantic_ai import RunContext
+
+from ..agents.base import StreamingMarker
+from ..agents.core.types import AnylogAgentDeps
+from ..agents.visualization.charts.charting_agent import (
     PlotChartRequest,
 )
-from plugins.anylogmcp.agents.visualization.tables.tabular_agent import (
+from ..agents.visualization.tables.tabular_agent import (
     GenerateTableRequest,
 )
-from pydantic_ai import RunContext
 
 if TYPE_CHECKING:
     from plugins.anylogmcp.agents.core.core_agent import AnylogAgent
@@ -16,97 +17,90 @@ if TYPE_CHECKING:
 
 def setup_interagent_tools(agent: "AnylogAgent"):
     @agent.tool
-    async def plot_charts(
-        ctx: RunContext[AnylogAgentDeps], charts: List[PlotChartRequest]
+    async def plot_chart(
+        ctx: RunContext[AnylogAgentDeps],
+        plot_title: str,
+        plot_type: str,
+        plot_data_csv: str,
     ) -> str:
         """
-        Plot multiple charts. Returns status of each chart attempt.
-        If any charts fail, returns details about which ones failed so they can be retried.
+        Plot a chart. plot_type must be one of: line, bar, pie, scatter.
+        plot_data_csv must be CSV with a header row e.g. "label,value\nJan,10\nFeb,20"
         """
-
         user_settings = ctx.deps.user_settings
+        plot = PlotChartRequest(
+            plot_title=plot_title, plot_type=plot_type, plot_data_csv=plot_data_csv
+        )
 
-        results = []
-        failed_charts = []
+        print(f"Plotting: {plot.plot_title}")
+        ctx.deps.chart_tool_called = True
 
-        for idx, plot in enumerate(charts):
-            print(f"Plotting: {plot.plot_title}")
+        if ctx.deps.resultFn:
+            await ctx.deps.resultFn(
+                {
+                    "tool_id": ctx.tool_call_id,
+                    "tool_name": f"Plotting: {plot.plot_title}",
+                    "tool_status": "START",
+                },
+                StreamingMarker.TOOL_EVENT,
+            )
+            await ctx.deps.resultFn(
+                f"Plotting: {plot.plot_title}", StreamingMarker.STATUS_UPDATE
+            )
+
+        try:
+            chart = await ctx.deps.chart_agent.generate_chart(
+                f"Create me a chart of this: {plot}", user_settings=user_settings
+            )
+
+            if isinstance(chart, Exception):
+                return f"FAILED: {chart}. Try again with corrected data."
+
+            print("Chart generated successfully")
+            print(chart)
 
             if ctx.deps.resultFn:
                 await ctx.deps.resultFn(
                     {
                         "tool_id": ctx.tool_call_id,
                         "tool_name": f"Plotting: {plot.plot_title}",
-                        "tool_status": "START",
+                        "tool_status": "END",
                     },
                     StreamingMarker.TOOL_EVENT,
                 )
-                await ctx.deps.resultFn(
-                    f"Plotting: {plot.plot_title}", StreamingMarker.STATUS_UPDATE
-                )
-            try:
-                chart = await ctx.deps.chart_agent.generate_chart(
-                    f"Create me a chart of this: {plot}", user_settings=user_settings
-                )
-                if isinstance(chart, Exception):
-                    failed_charts.append(
-                        {"index": idx, "plot": plot, "error": str(chart)}
-                    )
-                    results.append(f"Chart #{idx} FAILED: {chart}")
-                else:
-                    print(f"Chart #{idx} generated successfully")
-                    print(chart)
+                await ctx.deps.resultFn(chart.model_dump(), StreamingMarker.CHART_DATA)
 
-                    if ctx.deps.resultFn:
-                        await ctx.deps.resultFn(
-                            {
-                                "tool_id": ctx.tool_call_id,
-                                "tool_name": f"Plotting: {plot.plot_title}",
-                                "tool_status": "END",
-                            },
-                            StreamingMarker.TOOL_EVENT,
-                        )
-
-                        await ctx.deps.resultFn(
-                            chart.model_dump(), StreamingMarker.CHART_DATA
-                        )
-                    results.append(f"Chart #{idx} SUCCESS")
-            except Exception as e:
-                print(f"Error generating chart #{idx}: {e}")
-                failed_charts.append({"index": idx, "plot": plot, "error": str(e)})
-                results.append(f"Chart #{idx} FAILED: {str(e)}")
-
-        if not failed_charts:
             return (
-                "SUCCESS: All charts successfully plotted. Continue with your response."
+                "SUCCESS: Chart plotted. Finalize your response now. "
+                "Do not call additional tools unless the user explicitly requested another external action."
             )
-        else:
-            failure_details = "\n".join(
-                [f"- Chart #{f['index']}: {f['error']}" for f in failed_charts]
-            )
-            return f"PARTIAL SUCCESS: {len(charts) - len(failed_charts)}/{len(charts)} charts succeeded.\nFailed charts:\n{failure_details}\n\nPlease retry ONLY the failed charts with corrected data or different parameters."
+
+        except Exception as e:
+            print(f"Error generating chart: {e}")
+            return f"FAILED: {str(e)}. Try again with corrected data or a different plot_type."
 
     @agent.tool
     async def generate_table(
-        ctx: RunContext[AnylogAgentDeps], table_request: GenerateTableRequest
+        ctx: RunContext[AnylogAgentDeps], tableRequest: GenerateTableRequest
     ) -> str:
         """
         Generate a table. Returns status of table attempt.
         """
-        print(f"Constructing: {table_request.table_title}")
+        print(f"Constructing: {tableRequest.table_title}")
+        ctx.deps.table_tool_called = True
 
         user_settings = ctx.deps.user_settings
 
         if ctx.deps.resultFn:
             await ctx.deps.resultFn(
-                f"Constructing: {table_request.table_title}",
+                f"Constructing: {tableRequest.table_title}",
                 StreamingMarker.STATUS_UPDATE,
             )
 
             await ctx.deps.resultFn(
                 {
                     "tool_id": ctx.tool_call_id,
-                    "tool_name": f"Constructing: {table_request.table_title}",
+                    "tool_name": f"Constructing: {tableRequest.table_title}",
                     "tool_status": "START",
                 },
                 StreamingMarker.TOOL_EVENT,
@@ -114,7 +108,7 @@ def setup_interagent_tools(agent: "AnylogAgent"):
 
         try:
             table_result = await ctx.deps.tabular_agent.generate_table(
-                f"Create me a table of this data: {table_request}",
+                f"Create me a table of this data: {tableRequest}",
                 user_settings=user_settings,
             )
 
@@ -137,7 +131,7 @@ def setup_interagent_tools(agent: "AnylogAgent"):
                     table_result.model_dump(), StreamingMarker.TABLE_DATA
                 )
 
-            return "SUCCESS: Table successfully generated. Continue with your response."
+            return "SUCCESS: Table generated. Continue and finalize your response."
 
         except Exception as e:
             print(f"Error generating table: {e}")
@@ -152,6 +146,7 @@ def setup_interagent_tools(agent: "AnylogAgent"):
         user_settings = ctx.deps.user_settings
 
         print(f"Task: {task}")
+        ctx.deps.mcp_tool_called = True
 
         if ctx.deps.resultFn:
             await ctx.deps.resultFn(

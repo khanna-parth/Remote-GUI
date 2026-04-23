@@ -3,30 +3,30 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 5px 10px 5px 7px;
-  border-radius: 20px;
+  padding: 6px 10px 6px 8px;
+  border-radius: 12px;
   border: 1px solid transparent;
-  max-width: fit-content;
+  max-width: 100%;
   transition: background-color 0.25s, border-color 0.25s, opacity 0.25s;
   font-family: var(--cv-mono, 'DM Mono', monospace);
-  font-size: 11px;
+  font-size: 10.5px;
   letter-spacing: 0.02em;
-  user-select: none;
+  user-select: text;
 }
 
 /* Running state */
 .tool-event-entry--running {
-  background-color: #f5f3ef;
-  border-color: #ddd9d3;
-  color: #7a7570;
+  background-color: #f7f5f2;
+  border-color: #e5e0d8;
+  color: #6f6962;
 }
 
 /* Done state */
 .tool-event-entry--done {
-  background-color: #f0f4f1;
-  border-color: #c8ddd0;
-  color: #2d6a4f;
-  opacity: 0.82;
+  background-color: #f2f6f3;
+  border-color: #d2e2d7;
+  color: #2f5f48;
+  opacity: 0.9;
 }
 
 /* ─── Icon area ─── */
@@ -44,7 +44,7 @@
   width: 14px;
   height: 14px;
   animation: tool-spin 0.9s linear infinite;
-  color: #7a7570;
+  color: #6f6962;
 }
 
 @keyframes tool-spin {
@@ -56,8 +56,16 @@
 .tool-event-check {
   width: 14px;
   height: 14px;
-  color: #2d6a4f;
+  color: #2f5f48;
   animation: tool-check-pop 0.22s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.tool-event-check.success {
+  color: #2f8f5a;
+}
+
+.tool-event-x.failed {
+  color: #b54a3f;
 }
 
 @keyframes tool-check-pop {
@@ -74,11 +82,64 @@
 }
 
 .tool-event-label {
-  white-space: nowrap;
-  line-height: 1;
+  white-space: normal;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
 }
 
 .tool-event-name {
   font-weight: 500;
   color: inherit;
+}
+
+.tool-event-wrapper {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 100%;
+}
+
+.tool-event-expand-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: inherit;
+  opacity: 0.6;
+  flex-shrink: 0;
+  border-radius: 4px;
+}
+
+.tool-event-expand-btn:hover {
+  opacity: 1;
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.tool-event-expand-btn svg {
+  width: 10px;
+  height: 10px;
+}
+
+.tool-event-output {
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid #ddd9d3;
+  background: #faf9f7;
+  font-family: var(--cv-mono, 'DM Mono', monospace);
+  font-size: 11px;
+  color: #4a4540;
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-width: 420px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.tool-event-output--error {
+  color: #b54a3f;
 }

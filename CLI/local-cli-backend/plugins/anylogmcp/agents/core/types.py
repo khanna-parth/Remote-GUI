@@ -15,3 +15,6 @@ class AnylogAgentDeps:
     tabular_agent: "TabularAgent"
     mcp_agent: "MCPAgent"
     user_settings: User
+    mcp_tool_called: bool = False
+    chart_tool_called: bool = False
+    table_tool_called: bool = False

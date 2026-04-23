@@ -1,10 +1,12 @@
 import asyncio
+import json
 import os
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Callable, Optional
 from uuid import UUID, uuid4
 
+import httpx
 from dotenv import load_dotenv
 from fastapi import WebSocket
 from pydantic import BaseModel, Field, PrivateAttr, model_validator
@@ -19,6 +21,36 @@ from pydantic_ai.providers.openai import OpenAIProvider
 load_dotenv(
     "/Users/khanna/Documents/UCSC/CSE_115B/Remote-GUI/CLI/local-cli-backend/plugins/anylogmcp/.env"
 )
+
+
+class StrictRemovalTransport(httpx.AsyncHTTPTransport):
+    async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
+        if request.content:
+            try:
+                body = json.loads(request.content)
+                if "tools" in body:
+                    for tool in body["tools"]:
+                        tool.get("function", {}).pop("strict", None)
+                request = request.copy(content=json.dumps(body).encode())
+            except Exception:
+                pass
+        return await super().handle_async_request(request)
+
+
+class NoStrictProvider(OpenAIProvider):
+    @property
+    def client(self):
+        c = super().client
+        original_post = c.post
+
+        async def patched_post(url, *, json=None, **kwargs):
+            if json and "tools" in json:
+                for tool in json["tools"]:
+                    tool.get("function", {}).pop("strict", None)
+            return await original_post(url, json=json, **kwargs)
+
+        c.post = patched_post
+        return c
 
 
 class LLMProvider(str, Enum):

@@ -1,8 +1,15 @@
 import { useEffect, useState } from "react";
 import { sleep } from "../../../utils/asyncUtils";
 import chatState from "../state/state";
-import { sendConfiguration } from "../utils/network";
 import "../styles/ConfigView.css";
+
+const PROVIDER_URLS = {
+  "Claude (Anthropic)": "https://api.anthropic.com/v1",
+  "Gemini (Google AI)":
+    "https://generativelanguage.googleapis.com/v1beta/openai",
+  OpenRouter: "https://openrouter.ai/api/v1",
+  Ollama: "http://localhost:11434/v1",
+};
 
 const ConfigView = ({ onApply = () => {} }) => {
   const {
@@ -12,42 +19,22 @@ const ConfigView = ({ onApply = () => {} }) => {
     setModalViewName,
     wsID,
   } = chatState();
+
   const [status, setStatus] = useState("");
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [activeProvider, setActiveProvider] = useState(null);
   const [llmConfig, setLlmConfig] = useState({
-    planning: {
-      provider: "openai",
-      model: "",
-      api_key: "",
-      base_url: "",
-    },
-    charting: {
-      provider: "openai",
-      model: "",
-      api_key: "",
-      base_url: "",
-    },
-    tabulating: {
-      provider: "openai",
-      model: "",
-      api_key: "",
-      base_url: "",
-    },
-    mcp: {
-      provider: "openai",
-      model: "",
-      api_key: "",
-      base_url: "",
-    },
+    planning: { provider: "openai", model: "", api_key: "", base_url: "" },
+    charting: { provider: "openai", model: "", api_key: "", base_url: "" },
+    tabulating: { provider: "openai", model: "", api_key: "", base_url: "" },
+    mcp: { provider: "openai", model: "", api_key: "", base_url: "" },
   });
 
   useEffect(() => {
     try {
       const rawSettings = localStorage.getItem("chat-plugin/user-settings");
       if (!rawSettings) return;
-
       const saved = JSON.parse(rawSettings);
-
       setLlmConfig((prev) => ({
         planning: { ...prev.planning, ...saved.planning },
         charting: { ...prev.charting, ...saved.charting },
@@ -55,7 +42,11 @@ const ConfigView = ({ onApply = () => {} }) => {
         mcp: { ...prev.mcp, ...saved.mcp },
       }));
 
-      console.log("Restored LLM configuration");
+      const savedUrl = saved.planning?.base_url;
+      const match = Object.entries(PROVIDER_URLS).find(
+        ([, url]) => url === savedUrl,
+      );
+      if (match) setActiveProvider(match[0]);
     } catch (e) {
       console.log(`Failed loading settings for config: ${e}`);
     }
@@ -64,10 +55,7 @@ const ConfigView = ({ onApply = () => {} }) => {
   const updateConfig = (section, field, value) => {
     setLlmConfig((prev) => ({
       ...prev,
-      [section]: {
-        ...prev[section],
-        [field]: value,
-      },
+      [section]: { ...prev[section], [field]: value },
     }));
   };
 
@@ -80,6 +68,14 @@ const ConfigView = ({ onApply = () => {} }) => {
     }));
   };
 
+  const handleProviderClick = (providerName) => {
+    const url = PROVIDER_URLS[providerName];
+    if (url) {
+      updateAllConfigs("base_url", url);
+      setActiveProvider(providerName);
+    }
+  };
+
   const applySettings = async () => {
     setModelSettings(llmConfig);
     try {
@@ -87,53 +83,79 @@ const ConfigView = ({ onApply = () => {} }) => {
         "chat-plugin/user-settings",
         JSON.stringify(llmConfig),
       );
-      console.log(`Saved LLM configuration settings locally`);
       setStatus("Applied");
       await sleep(2000);
-      if (modalViewName) {
-        setModalViewName(null);
-      }
+      setStatus("");
+      if (modalViewName) setModalViewName(null);
     } catch (e) {
       console.log(`Failed updating settings: ${e}`);
       setStatus(`Failed applying settings: ${e}`);
     }
   };
 
+  const clearSettings = () => {
+    const empty = { provider: "openai", model: "", api_key: "", base_url: "" };
+    setLlmConfig({
+      planning: { ...empty },
+      charting: { ...empty },
+      tabulating: { ...empty },
+      mcp: { ...empty },
+    });
+    setActiveProvider(null);
+    setStatus("");
+  };
+
   const mainConfig = llmConfig.planning;
+
+  const advancedSections = [
+    { key: "planning", label: "Planning" },
+    { key: "charting", label: "Charting" },
+    { key: "tabulating", label: "Tabulating" },
+    { key: "mcp", label: "MCP / AnyLog Network" },
+  ];
 
   return (
     <div className="config-view-container">
-      <h3 style={{ margin: 0 }}>LLM Configuration</h3>
+      <div className="config-view-header">
+        <h3>LLM Configuration</h3>
+        <p className="config-view-description">
+          Configure your LLM settings for any OpenAI-compatible provider.
+        </p>
+      </div>
 
-      <p className="config-view-description">
-        Configure your LLM settings for OpenAI-compatible providers.
-      </p>
-      <p className="config-view-provider-label">
-        Example of OpenAI-compatible providers:
-      </p>
-      <ul className="config-view-provider-list">
-        <li>Claude (via Anthropic API)</li>
-        <li>Gemini (via Google AI)</li>
-        <li>OpenRouter</li>
-        <li>Ollama (self-hosted)</li>
-      </ul>
-      <p className="config-view-hint">
-        Enter the OpenAI-compatible endpoint URL, API key, and model name.
-      </p>
+      <div>
+        <p className="config-view-provider-label">Compatible providers</p>
+        <div className="config-view-provider-chips">
+          {Object.keys(PROVIDER_URLS).map((p) => (
+            <span
+              key={p}
+              className={`config-view-chip${activeProvider === p ? " active" : ""}`}
+              onClick={() => handleProviderClick(p)}
+            >
+              {p}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      <div className="config-view-divider" />
 
       {!showAdvanced ? (
         <div className="config-view-section">
           <div className="config-view-section-row">
             <input
               value={mainConfig.base_url}
-              onChange={(e) => updateAllConfigs("base_url", e.target.value)}
+              onChange={(e) => {
+                updateAllConfigs("base_url", e.target.value);
+                setActiveProvider(null);
+              }}
               placeholder="Base URL"
               className="config-view-input"
             />
             <input
               value={mainConfig.model}
               onChange={(e) => updateAllConfigs("model", e.target.value)}
-              placeholder="LLM Model"
+              placeholder="Model name"
               className="config-view-input"
             />
           </div>
@@ -146,14 +168,9 @@ const ConfigView = ({ onApply = () => {} }) => {
           />
         </div>
       ) : (
-        [
-          { key: "planning", label: "Planning" },
-          { key: "charting", label: "Charting" },
-          { key: "tabulating", label: "Tabulating" },
-          { key: "mcp", label: "MCP / AnyLog Network" },
-        ].map(({ key, label }) => (
+        advancedSections.map(({ key, label }) => (
           <div key={key} className="config-view-section">
-            <strong>{label}</strong>
+            <span className="config-view-section-label">{label}</span>
             <div className="config-view-section-row">
               <input
                 value={llmConfig[key].base_url}
@@ -164,7 +181,7 @@ const ConfigView = ({ onApply = () => {} }) => {
               <input
                 value={llmConfig[key].model}
                 onChange={(e) => updateConfig(key, "model", e.target.value)}
-                placeholder="LLM Model"
+                placeholder="Model name"
                 className="config-view-input"
               />
             </div>
@@ -183,18 +200,23 @@ const ConfigView = ({ onApply = () => {} }) => {
         onClick={() => setShowAdvanced(!showAdvanced)}
         className="config-view-advanced-toggle"
       >
-        {showAdvanced ? "Hide Advanced Settings" : "Advanced Settings"}
+        {showAdvanced ? "▲ Hide advanced settings" : "▼ Advanced settings"}
       </button>
 
+      <div className="config-view-divider" />
+
       <div className="config-view-actions">
-        <button className="config-view-clear-button">Clear</button>
-        <button className="config-view-apply-button" onClick={() => applySettings()}>
+        <button className="config-view-clear-button" onClick={clearSettings}>
+          Clear
+        </button>
+        <button className="config-view-apply-button" onClick={applySettings}>
           Apply
         </button>
       </div>
 
       {status && (
         <div className="config-view-status">
+          <div className="config-view-status-dot" />
           <h3 className="config-view-status-text">{status}</h3>
         </div>
       )}
