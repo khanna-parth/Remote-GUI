@@ -3,6 +3,9 @@
     "grafana",
     "reportgenerator",
     "nodecheck",
+    "calculator",
+    "fileuploader",
+    "sshclient",
     "mcpclient",
     "calculator",
     "videostreamviewer"
