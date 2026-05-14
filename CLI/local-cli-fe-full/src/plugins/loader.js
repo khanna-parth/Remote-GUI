@@ -159,6 +159,63 @@ const buildExposeCandidates = (exposedModule) => {
   return candidates;
 };
 
+/** Backend serves plugin CSS under API_URL; host may run on another origin (e.g. Vite :5173). */
+const apiOrigin = () => {
+  try {
+    return new URL(API_URL).origin;
+  } catch {
+    return window.location.origin;
+  }
+};
+
+/**
+ * The host never loads a remote's index.html, only remoteEntry.js — so Vite's normal <link
+ * stylesheet> tags from the build are skipped. Chunk-level CSS injection also sometimes fails
+ * for federated exposes. Fetch index.html next to remoteEntry and mirror its stylesheets.
+ */
+const injectStylesheetsFromRemoteIndexHtml = async (remoteEntryAbsoluteUrl) => {
+  const base = remoteEntryAbsoluteUrl.replace(/\/remoteEntry\.js(\?.*)?$/i, "/");
+  const indexUrl = `${base}index.html`;
+  const origin = apiOrigin();
+
+  try {
+    const res = await fetch(indexUrl, { cache: "no-store" });
+    if (!res.ok) return;
+
+    const html = await res.text();
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    const links = doc.querySelectorAll('link[rel="stylesheet"][href]');
+
+    links.forEach((node) => {
+      const raw = node.getAttribute("href");
+      if (!raw) return;
+
+      let absolute;
+      if (/^https?:\/\//i.test(raw)) {
+        absolute = raw;
+      } else if (raw.startsWith("/")) {
+        absolute = `${origin}${raw}`;
+      } else {
+        absolute = new URL(raw, indexUrl).href;
+      }
+
+      const already = [...document.querySelectorAll('link[rel="stylesheet"]')].some(
+        (el) => el.href === absolute,
+      );
+      if (already) return;
+
+      const link = document.createElement("link");
+      link.rel = "stylesheet";
+      link.href = absolute;
+      link.crossOrigin = "anonymous";
+      link.setAttribute("data-mf-remote-entry-css", remoteEntryAbsoluteUrl);
+      document.head.appendChild(link);
+    });
+  } catch (err) {
+    console.warn("[PluginLoader] Could not inject styles from remote index.html:", indexUrl, err);
+  }
+};
+
 const toSharedFactory = (mod) => {
   const exportModule = { ...mod };
   if (!("default" in exportModule)) {
@@ -231,6 +288,8 @@ export const loadFederatedComponent = async ({
 
   try {
     initializeDevContext();
+
+    await injectStylesheetsFromRemoteIndexHtml(resolvedUrl);
 
     const container = await import(/* @vite-ignore */ resolvedUrl);
 

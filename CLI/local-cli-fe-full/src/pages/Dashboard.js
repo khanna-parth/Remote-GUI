@@ -31,6 +31,7 @@ import {
 
 import {
   initializeFeatureConfig,
+  invalidateFeatureConfig,
   isFeatureEnabled,
   isPluginEnabled,
 } from "../services/featureConfig";
@@ -111,6 +112,8 @@ const Dashboard = () => {
     isLoadingRef.current = true;
 
     try {
+      // installs update /feature-config on the server; drop stale cache
+      invalidateFeatureConfig();
       const freshPages = await refreshPluginPages();
       console.log("[Dashboard] freshPages:", Object.keys(freshPages));
       console.log("[Dashboard] pluginEnabled checks:");
@@ -337,15 +340,17 @@ const Dashboard = () => {
                     element={
                       <PluginMountGate key={location.pathname}>
                         <PluginErrorBoundary>
-                          <Suspense
-                            fallback={
-                              <div style={{ padding: 32 }}>
-                                Loading {plugin.name}…
-                              </div>
-                            }
-                          >
-                            <plugin.component node={selectedNode} />
-                          </Suspense>
+                          <div className="dashboard-plugin-frame">
+                            <Suspense
+                              fallback={
+                                <div style={{ padding: 32 }}>
+                                  Loading {plugin.name}…
+                                </div>
+                              }
+                            >
+                              <plugin.component node={selectedNode} />
+                            </Suspense>
+                          </div>
                         </PluginErrorBoundary>
                       </PluginMountGate>
                     }

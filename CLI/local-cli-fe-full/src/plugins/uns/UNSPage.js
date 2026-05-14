@@ -1,14 +1,26 @@
-import React, { useState, useEffect, useRef } from 'react';
-import './UNSPage.css';
-import UNSSidePanel from './UNSSidePanel';
-import { getRoot, getChildren, checkChildren, queryMetadata, queryTable, checkTable } from './uns_api';
+import React, { useState, useEffect, useRef } from "react";
+import "./UNSPage.css";
+import UNSSidePanel from "./UNSSidePanel";
+import {
+  getRoot,
+  getChildren,
+  checkChildren,
+  queryMetadata,
+  queryTable,
+  checkTable,
+} from "./uns_api";
+
+export const pluginMetadata = {
+  name: "UNS",
+  icon: null,
+};
 
 const UNSPage = () => {
   return (
     <div>
-    <h1>UNS Page</h1>
+      <h1>UNS Page</h1>
     </div>
-  )
+  );
 };
 
 export default UNSPage;
@@ -56,7 +68,6 @@ export default UNSPage;
 //     };
 //   }, [hoverTimeout]);
 
-
 //   // Background check for table data when layers change
 //   useEffect(() => {
 //     // Cancel all pending checks from previous layers
@@ -66,7 +77,7 @@ export default UNSPage;
 //       }
 //     });
 //     checkTimeoutsRef.current = [];
-    
+
 //     // Clear checking state for items not in current layer
 //     if (layers.length === 0 || !node) {
 //       setCheckingData(new Set());
@@ -118,10 +129,10 @@ export default UNSPage;
 //     if (itemsToCheck.length > 0) {
 //       let index = 0;
 //       let cancelled = false;
-      
+
 //       const processNext = () => {
 //         if (cancelled || index >= itemsToCheck.length) return;
-        
+
 //         const item = itemsToCheck[index];
 //         checkTableData(item.dbms, item.table).then(() => {
 //           if (cancelled) return;
@@ -133,11 +144,11 @@ export default UNSPage;
 //           }
 //         });
 //       };
-      
+
 //       // Start processing after a short delay
 //       const initialTimeoutId = setTimeout(processNext, 100);
 //       checkTimeoutsRef.current.push(initialTimeoutId);
-      
+
 //       // Cleanup: cancel pending checks if layers change or component unmounts
 //       return () => {
 //         cancelled = true;
@@ -161,7 +172,7 @@ export default UNSPage;
 //       }
 //     });
 //     childrenCheckTimeoutsRef.current = [];
-    
+
 //     if (layers.length === 0 || !node) {
 //       setCheckingChildren(new Set());
 //       return;
@@ -211,10 +222,10 @@ export default UNSPage;
 //     if (itemsToCheck.length > 0) {
 //       let index = 0;
 //       let cancelled = false;
-      
+
 //       const processNext = () => {
 //         if (cancelled || index >= itemsToCheck.length) return;
-        
+
 //         const item = itemsToCheck[index];
 //         checkItemChildren(item.itemId, item.itemKey).then(() => {
 //           if (cancelled) return;
@@ -226,11 +237,11 @@ export default UNSPage;
 //           }
 //         });
 //       };
-      
+
 //       // Start processing after a short delay
 //       const initialTimeoutId = setTimeout(processNext, 100);
 //       childrenCheckTimeoutsRef.current.push(initialTimeoutId);
-      
+
 //       // Cleanup: cancel pending checks if layers change or component unmounts
 //       return () => {
 //         cancelled = true;
@@ -261,14 +272,14 @@ export default UNSPage;
 
 //     try {
 //       const result = await getRoot(node, rootQuery);
-      
+
 //       if (result.success && result.data) {
 //         // Log the structure for debugging
 //         console.log('UNS: Root items received:', result.data);
 //         if (result.data.length > 0) {
 //           console.log('UNS: First item structure:', result.data[0]);
 //         }
-        
+
 //         // Initialize with root layer
 //         setLayers([result.data]);
 //         setCurrentPath([]);
@@ -288,7 +299,7 @@ export default UNSPage;
 //     if (!item || typeof item !== 'object') {
 //       return null;
 //     }
-    
+
 //     // Handle structure: {key: {data}} - find the nested object first
 //     const keys = Object.keys(item);
 //     if (keys.length === 1 && typeof item[keys[0]] === 'object' && !Array.isArray(item[keys[0]])) {
@@ -296,13 +307,13 @@ export default UNSPage;
 //       const nested = item[keys[0]];
 //       if (nested.id) return nested.id;
 //     }
-    
+
 //     // Also check for legacy structures
 //     if (item.namespace && item.namespace.id) return item.namespace.id;
 //     if (item.device && item.device.id) return item.device.id;
 //     if (item.sensor && item.sensor.id) return item.sensor.id;
 //     if (item.id) return item.id;
-    
+
 //     return null;
 //   };
 
@@ -310,7 +321,7 @@ export default UNSPage;
 //     if (!item || typeof item !== 'object') {
 //       return String(item || 'Unknown');
 //     }
-    
+
 //     // Handle structure: {key: {data}} - this is the main structure
 //     const keys = Object.keys(item);
 //     if (keys.length === 1 && typeof item[keys[0]] === 'object' && !Array.isArray(item[keys[0]])) {
@@ -321,7 +332,7 @@ export default UNSPage;
 //       // Then try 'id' field
 //       if (nested.id) return nested.id;
 //     }
-    
+
 //     // Legacy structures (namespace, device, sensor)
 //     if (item.namespace) {
 //       if (item.namespace.name) return item.namespace.name;
@@ -335,11 +346,11 @@ export default UNSPage;
 //       if (item.sensor.name) return item.sensor.name;
 //       if (item.sensor.id) return item.sensor.id;
 //     }
-    
+
 //     // Check top-level fields
 //     if (item.name) return item.name;
 //     if (item.id) return item.id;
-    
+
 //     // Check all keys for nested objects that might have name/id
 //     for (const key of keys) {
 //       if (item[key] && typeof item[key] === 'object' && !Array.isArray(item[key])) {
@@ -348,25 +359,25 @@ export default UNSPage;
 //         if (nested.id) return nested.id;
 //       }
 //     }
-    
+
 //     // Last resort: use the first meaningful string value
 //     for (const key of keys) {
 //       if (typeof item[key] === 'string' && item[key].trim() && key !== 'date' && key !== 'ledger') {
 //         return item[key];
 //       }
 //     }
-    
+
 //     // If we have a single key, use that as the name
 //     if (keys.length === 1) {
 //       return keys[0];
 //     }
-    
+
 //     // Final fallback - use a truncated JSON representation
 //     const jsonStr = JSON.stringify(item);
 //     if (jsonStr.length > 0) {
 //       return jsonStr.substring(0, 30) + (jsonStr.length > 30 ? '...' : '');
 //     }
-    
+
 //     return 'Unknown';
 //   };
 
@@ -374,18 +385,18 @@ export default UNSPage;
 //     if (!item || typeof item !== 'object') {
 //       return 'unknown';
 //     }
-    
+
 //     // Handle structure: {key: {data}} - use the key as the type
 //     const keys = Object.keys(item);
 //     if (keys.length === 1 && typeof item[keys[0]] === 'object' && !Array.isArray(item[keys[0]])) {
 //       return keys[0]; // Return the key (config, master, license, cluster, operator, table, etc.)
 //     }
-    
+
 //     // Legacy structures
 //     if (item.namespace) return 'namespace';
 //     if (item.device) return 'device';
 //     if (item.sensor) return 'sensor';
-    
+
 //     return 'unknown';
 //   };
 
@@ -393,18 +404,18 @@ export default UNSPage;
 //     if (!item || typeof item !== 'object') {
 //       return item;
 //     }
-    
+
 //     // Handle structure: {key: {data}} - return the nested data object
 //     const keys = Object.keys(item);
 //     if (keys.length === 1 && typeof item[keys[0]] === 'object' && !Array.isArray(item[keys[0]])) {
 //       return item[keys[0]]; // Return the nested data object
 //     }
-    
+
 //     // Legacy structures
 //     if (item.namespace) return item.namespace;
 //     if (item.device) return item.device;
 //     if (item.sensor) return item.sensor;
-    
+
 //     return item;
 //   };
 
@@ -419,7 +430,7 @@ export default UNSPage;
 
 //   const checkItemChildren = async (itemId, itemKey) => {
 //     if (!node || !itemId) return false;
-    
+
 //     // If already cached, return cached value
 //     if (itemsWithChildren.has(itemKey)) {
 //       return true;
@@ -427,21 +438,21 @@ export default UNSPage;
 //     if (itemsWithoutChildren.has(itemKey)) {
 //       return false;
 //     }
-    
+
 //     // If currently checking, return null (don't check again)
 //     if (checkingChildren.has(itemId)) {
 //       return null;
 //     }
-    
+
 //     // Mark as checking
 //     setCheckingChildren(prev => new Set(prev).add(itemId));
-    
+
 //     try {
 //       const result = await checkChildren(node, itemId);
-      
+
 //       // Only consider it has_children if success is True AND has_children is True
 //       const hasChildren = result.success === true && result.has_children === true;
-      
+
 //       // Cache the result
 //       if (result.success !== undefined) {
 //         if (hasChildren) {
@@ -450,7 +461,7 @@ export default UNSPage;
 //           setItemsWithoutChildren(prev => new Set(prev).add(itemKey));
 //         }
 //       }
-      
+
 //       return hasChildren;
 //     } catch (err) {
 //       console.error('Error checking children:', err);
@@ -475,13 +486,13 @@ export default UNSPage;
 //     }
 
 //     const expandedKey = `${layerIndex}-${itemId}`;
-    
+
 //     // If already expanded, collapse it
 //     if (expandedItems.has(expandedKey)) {
 //       const newExpanded = new Set(expandedItems);
 //       newExpanded.delete(expandedKey);
 //       setExpandedItems(newExpanded);
-      
+
 //       // Remove layers after this one
 //       const newLayers = layers.slice(0, layerIndex + 1);
 //       setLayers(newLayers);
@@ -506,16 +517,16 @@ export default UNSPage;
 
 //     try {
 //       const result = await getChildren(node, itemId);
-      
+
 //       console.log('UNS: Response received:', {
 //         success: result.success,
 //         dataLength: result.data ? result.data.length : 0,
 //         hasChildren: result.data && result.data.length > 0
 //       });
-      
+
 //       if (result.success && result.data !== undefined) {
 //         const children = result.data;
-        
+
 //         // Cache whether this item has children
 //         const itemKey = `${layerIndex}-${itemId}`;
 //         if (children && children.length > 0) {
@@ -523,7 +534,7 @@ export default UNSPage;
 //           const newHasChildren = new Set(itemsWithChildren);
 //           newHasChildren.add(itemKey);
 //           setItemsWithChildren(newHasChildren);
-          
+
 //           // Mark as expanded
 //           const newExpanded = new Set(expandedItems);
 //           newExpanded.add(expandedKey);
@@ -540,7 +551,7 @@ export default UNSPage;
 //             data: getItemData(item)
 //           }];
 //           setCurrentPath(newPath);
-          
+
 //           // Scroll to top when expanding to new layer
 //           window.scrollTo({ top: 0, behavior: 'smooth' });
 //         } else {
@@ -566,11 +577,11 @@ export default UNSPage;
 //     const newLayers = layers.slice(0, targetLayerIndex + 1);
 //     setLayers(newLayers);
 //     setCurrentPath(currentPath.slice(0, targetLayerIndex));
-    
+
 //     // Update expanded items to match - only items in the path up to targetLayerIndex
 //     const newExpanded = new Set();
 //     const newHasChildren = new Set();
-    
+
 //     // Mark items in the path as expanded and having children
 //     for (let i = 0; i < targetLayerIndex; i++) {
 //       if (i < currentPath.length) {
@@ -580,13 +591,13 @@ export default UNSPage;
 //         newHasChildren.add(key);
 //       }
 //     }
-    
+
 //     setExpandedItems(newExpanded);
 //     // Merge with existing itemsWithChildren to preserve cache
 //     const mergedHasChildren = new Set([...itemsWithChildren, ...newHasChildren]);
 //     setItemsWithChildren(mergedHasChildren);
 //     // Keep itemsWithoutChildren as is - we don't need to clear it
-    
+
 //     // Scroll to top when navigating
 //     window.scrollTo({ top: 0, behavior: 'smooth' });
 //   };
@@ -596,13 +607,13 @@ export default UNSPage;
 //     if (hoverTimeout) {
 //       clearTimeout(hoverTimeout);
 //     }
-    
+
 //     // Set a timeout to show tooltip after 1 second
 //     const timeout = setTimeout(() => {
 //       setHoveredItem(item);
 //       setHoverPosition({ x: e.clientX, y: e.clientY });
 //     }, 1000);
-    
+
 //     setHoverTimeout(timeout);
 //   };
 
@@ -667,13 +678,13 @@ export default UNSPage;
 //         column,
 //         time_column: timeColumn,
 //       });
-      
+
 //       console.log('UNS: SQL query result:', {
 //         success: result.success,
 //         dataLength: result.data ? result.data.length : 0,
 //         dataType: Array.isArray(result.data) ? 'array' : typeof result.data
 //       });
-      
+
 //       if (result.success) {
 //         console.log(`UNS: Setting ${result.data ? result.data.length : 0} rows in state`);
 //         setSqlData(result.data);
@@ -690,30 +701,30 @@ export default UNSPage;
 
 //   const checkTableData = async (dbms, table) => {
 //     if (!node || !dbms || !table) return false;
-    
+
 //     // Create a cache key
 //     const cacheKey = `${dbms}:${table}`;
-    
+
 //     // If already cached, return cached value
 //     if (itemsWithData.has(cacheKey)) {
 //       return itemsWithData.get(cacheKey);
 //     }
-    
+
 //     // If currently checking, return null (don't check again)
 //     if (checkingData.has(cacheKey)) {
 //       return null;
 //     }
-    
+
 //     // Mark as checking
 //     setCheckingData(prev => new Set(prev).add(cacheKey));
-    
+
 //     try {
 //       const result = await checkTable(node, { dbms, table });
-      
+
 //       // Only consider it has_data if success is True AND has_data is True
 //       // If success is False or has_data is False, treat as no data
 //       const hasData = result.success === true && result.has_data === true;
-      
+
 //       // Only cache if we got a definitive result (true or false)
 //       // Don't cache errors or undefined states
 //       if (result.success !== undefined) {
@@ -725,7 +736,7 @@ export default UNSPage;
 //           return newMap;
 //         });
 //       }
-      
+
 //       return hasData;
 //     } catch (err) {
 //       console.error('Error checking table data:', err);
@@ -749,7 +760,7 @@ export default UNSPage;
 //   const toggleSidePanel = (item) => {
 //     const itemId = getItemId(item);
 //     const isCurrentlySelected = selectedItem && getItemId(selectedItem) === itemId;
-    
+
 //     // If clicking on the already selected item and panel is open, close it
 //     if (isCurrentlySelected && isSidePanelOpen) {
 //       setIsSidePanelOpen(false);
@@ -764,7 +775,7 @@ export default UNSPage;
 //       setSqlError(null);
 //       setChartYKey(null); // Reset so chart defaults to policy column for new item
 //       setTimeColumn('insert_timestamp'); // Reset time column when opening new item
-      
+
 //       // Only fetch SQL data if get data nodes confirmed there is a table at this location
 //       const itemData = getItemData(item);
 //       const hasTableMeta = itemData && itemData.dbms && itemData.table;
@@ -784,7 +795,7 @@ export default UNSPage;
 //     const expandedKey = `${layerIndex}-${itemId}`;
 //     const itemKey = `${layerIndex}-${itemId}`;
 //     const isExpanded = expandedItems.has(expandedKey);
-    
+
 //     // Check if this item has children
 //     // If we've already checked and it has no children, it's a leaf
 //     const hasNoChildren = itemsWithoutChildren.has(itemKey);
@@ -792,13 +803,13 @@ export default UNSPage;
 //     const hasChildren = itemsWithChildren.has(itemKey) || isExpanded;
 //     // Check if currently checking for children
 //     const isCheckingChildren = checkingChildren.has(itemId);
-    
+
 //     // Check if item has table data (for visual indicator)
 //     const hasTable = itemData && itemData.dbms && itemData.table;
 //     const tableCacheKey = hasTable ? `${itemData.dbms}:${itemData.table}` : null;
 //     const hasData = tableCacheKey ? (itemsWithData.get(tableCacheKey) ?? null) : null;
 //     const isCheckingData = tableCacheKey ? checkingData.has(tableCacheKey) : false;
-    
+
 //     // Determine icon based on whether item has children
 //     let icon = '📄'; // Default file icon
 //     if (hasChildren) {
@@ -835,7 +846,7 @@ export default UNSPage;
 //     };
 
 //     const isSelected = selectedItem && getItemId(selectedItem) === itemId;
-    
+
 //     // Add data indicator class ONLY if item definitively has data (true)
 //     // Don't add any class if hasData is false or null (no data or not checked)
 //     const dataIndicatorClass = hasData === true ? 'has-data' : '';
@@ -903,8 +914,8 @@ export default UNSPage;
 
 //     return (
 //       <div className="uns-breadcrumb">
-//         <button 
-//           className="uns-breadcrumb-item" 
+//         <button
+//           className="uns-breadcrumb-item"
 //           onClick={navigateToRoot}
 //         >
 //           🏠 Root
@@ -914,7 +925,7 @@ export default UNSPage;
 //           // path[0] shows layer 1, path[1] shows layer 2, etc.
 //           const targetLayerIndex = index + 1;
 //           const isCurrentLayer = targetLayerIndex === layers.length - 1;
-          
+
 //           return (
 //             <React.Fragment key={index}>
 //               <span className="uns-breadcrumb-separator">/</span>
@@ -929,7 +940,7 @@ export default UNSPage;
 //                     window.scrollTo({ top: 0, behavior: 'smooth' });
 //                   }
 //                 }}
-//                 style={{ 
+//                 style={{
 //                   cursor: isCurrentLayer ? 'default' : 'pointer',
 //                   fontWeight: isCurrentLayer ? 'bold' : 'normal'
 //                 }}
@@ -942,7 +953,6 @@ export default UNSPage;
 //       </div>
 //     );
 //   };
-
 
 //   return (
 //     <div className="uns-container">
@@ -966,8 +976,8 @@ export default UNSPage;
 //               disabled={loading}
 //             />
 //           </div>
-//           <button 
-//             onClick={loadRootItems} 
+//           <button
+//             onClick={loadRootItems}
 //             disabled={loading || !node || !rootQuery.trim()}
 //             className="uns-refresh-btn"
 //           >
@@ -997,10 +1007,10 @@ export default UNSPage;
 //           // Only show the current layer (the last one)
 //           const currentLayerIndex = layers.length - 1;
 //           const currentLayer = layers[currentLayerIndex];
-//           const layerName = currentLayerIndex === 0 
-//             ? 'Root' 
+//           const layerName = currentLayerIndex === 0
+//             ? 'Root'
 //             : (currentPath[currentLayerIndex - 1]?.name || `Layer ${currentLayerIndex}`);
-          
+
 //           return (
 //             <div key={currentLayerIndex} className="uns-layer">
 //               <div className="uns-layer-header">
@@ -1081,4 +1091,3 @@ export default UNSPage;
 // };
 
 // export default UNSPage;
-

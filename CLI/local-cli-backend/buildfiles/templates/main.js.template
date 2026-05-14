@@ -1,0 +1,9 @@
+import React from "react";
+import ReactDOM from "react-dom/client";
+import XPage from "./@@PAGE_BASENAME@@";
+
+ReactDOM.createRoot(document.getElementById("root")).render(
+  <React.StrictMode>
+    <XPage />
+  </React.StrictMode>
+);

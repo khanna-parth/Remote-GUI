@@ -58,27 +58,22 @@
     },
     "calculator": {
       "slug": "anylog/calculator",
-      "enabled": true,
+      "enabled": false,
       "description": "Calculator Plugin"
     },
     "grafana": {
       "slug": "anylog/grafana",
-      "enabled": true,
+      "enabled": false,
       "description": "Grafana Dashboard Plugin"
     },
     "mcpclient": {
       "slug": "anylog/mcpclient",
-      "enabled": true,
+      "enabled": false,
       "description": "MCP Client Plugin - Integrates Ollama with AnyLog MCP"
     },
     "marketplace": {
       "slug": "anylog/marketplace",
       "enabled": true
-    },
-    "dev/chat-plugin": {
-      "name": "Chat",
-      "enabled": true,
-      "description": "Interact with your Anylog data through a chatbot"
     },
     "sshclient": {
       "enabled": false,
@@ -91,6 +86,11 @@
     "videostreamviewer": {
       "enabled": true,
       "description": "Video Stream Viewer Plugin"
+    },
+    "dev/chat-plugin": {
+      "name": "Chat",
+      "enabled": true,
+      "description": "Interact with your Anylog data through a chatbot"
     }
   },
   "version": "1.0.0"

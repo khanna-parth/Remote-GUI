@@ -28,6 +28,11 @@ import PluginStats from "./components/PluginStats";
 import RegistryEditor from "./components/RegistryEditor";
 import DownloadManager from "./components/DownloadManager";
 
+export const pluginMetadata = {
+  name: "Marketplace",
+  icon: null,
+};
+
 const API_URL = window._env_?.VITE_API_URL || "http://localhost:8080";
 
 const TABS = ["ALL", "INSTALLED"];
@@ -89,6 +94,12 @@ const MarketplacePage = () => {
       console.error("Failed getting installed plugins:", e);
     }
   }, []);
+
+  /** Refetch marketplace state and notify Sidebar + Dashboard. */
+  const refreshInstalledAndBroadcast = useCallback(async () => {
+    await fetchInstalled();
+    window.dispatchEvent(new CustomEvent("anylog:plugins-changed"));
+  }, [fetchInstalled]);
 
   useEffect(() => {
     fetchInstalled();
@@ -160,7 +171,7 @@ const MarketplacePage = () => {
     addInstall(plugin.core.slug, plugin.core.name);
     install(plugin, {
       onStatusChange: updateInstall,
-      onInstallComplete: fetchInstalled,
+      onInstallComplete: refreshInstalledAndBroadcast,
     });
   };
 
@@ -189,7 +200,7 @@ const MarketplacePage = () => {
   const handleUninstall = async (slug) => {
     try {
       await uninstallPlugin(slug);
-      await fetchInstalled();
+      await refreshInstalledAndBroadcast();
     } catch (e) {
       console.error("Failed uninstalling plugin:", e);
     }
@@ -228,8 +239,7 @@ const MarketplacePage = () => {
             console.warn("Post-update disable failed:", err);
           }
         }
-        await fetchInstalled();
-        window.dispatchEvent(new CustomEvent("anylog:plugins-changed"));
+        await refreshInstalledAndBroadcast();
       },
     });
   };
@@ -287,6 +297,36 @@ const MarketplacePage = () => {
     registryPluginsByUrl,
     latestRegistryPluginBySlug,
   ]);
+
+  const detailSlug = selectedPlugin?.core?.slug;
+  const detailInstalled =
+    detailSlug != null
+      ? installedPlugins.find((i) => i.slug === detailSlug)
+      : undefined;
+  const detailPending =
+    detailSlug != null ? pendingUpdatesBySlug[detailSlug] : undefined;
+  const detailInstallEntry =
+    detailSlug != null ? installs.find((i) => i.slug === detailSlug) : undefined;
+  const detailInstallBusy = Boolean(
+    detailInstallEntry &&
+      (detailInstallEntry.status === "installing" ||
+        detailInstallEntry.status === "enabling"),
+  );
+  const detailProgressTail =
+    detailInstallEntry?.progress?.length > 0
+      ? detailInstallEntry.progress[detailInstallEntry.progress.length - 1]
+      : "";
+  const detailInstallStatusText =
+    detailInstallEntry?.status === "enabling"
+      ? detailProgressTail || "Enabling plugin…"
+      : detailProgressTail || "Installing…";
+  const detailCardBusy =
+    detailSlug != null &&
+    installs.some(
+      (i) =>
+        i.slug === detailSlug &&
+        (i.status === "installing" || i.status === "enabling"),
+    );
 
   return (
     <div className="mp-page">
@@ -422,7 +462,7 @@ const MarketplacePage = () => {
           slotProps={BACKDROP_PROPS}
         >
           <Box sx={MODAL_STYLE}>
-            <ZipInstall onInstallComplete={fetchInstalled} />
+            <ZipInstall onInstallComplete={refreshInstalledAndBroadcast} />
           </Box>
         </Modal>
       )}
@@ -454,6 +494,34 @@ const MarketplacePage = () => {
               <PluginDetailsView
                 selectedPlugin={selectedPlugin}
                 closeModalCallback={() => setSelectedPlugin(null)}
+                installed={detailInstalled}
+                enabled={detailSlug != null && enabledSlugs.has(detailSlug)}
+                onInstall={() => handleInstall(selectedPlugin)}
+                onEnabledStateChange={(currentlyEnabled) => {
+                  if (detailSlug != null) {
+                    void handleEnabledStateChange(detailSlug, currentlyEnabled);
+                  }
+                }}
+                onUninstall={() => {
+                  if (detailSlug != null) void handleUninstall(detailSlug);
+                }}
+                onTriggerMetrics={() => setModalType("stats")}
+                updateInfo={
+                  detailPending
+                    ? {
+                        installedVersion: detailPending.installedVersion,
+                        latestVersion: detailPending.latestVersion,
+                      }
+                    : null
+                }
+                onUpdate={
+                  detailPending
+                    ? () => handleUpdate(detailPending.registryPlugin)
+                    : undefined
+                }
+                updateInProgress={Boolean(detailPending && detailCardBusy)}
+                installBusy={detailInstallBusy}
+                installStatusText={detailInstallStatusText}
               />
             )}
           </Box>

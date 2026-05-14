@@ -15,6 +15,30 @@
 **/*.pyc
 outputs/
 
+CLI/local-cli-backend/plugins/sshclient
+CLI/local-cli-backend/plugins/sshclient/**
+
+CLI/local-cli-backend/plugins/mcpclient
+CLI/local-cli-backend/plugins/mcpclient/**
+
+CLI/local-cli-backend/plugins/grafana
+CLI/local-cli-backend/plugins/grafana/**
+
+CLI/local-cli-fe-full/src/plugins/sshclient
+CLI/local-cli-fe-full/src/plugins/sshclient/**
+
+CLI/local-cli-fe-full/src/plugins/mcpclient
+CLI/local-cli-fe-full/src/plugins/mcpclient/**
+
+CLI/local-cli-fe-full/src/plugins/grafana
+CLI/local-cli-fe-full/src/plugins/grafana/**
+
+CLI/local-cli-fe-full/src/plugins/anylogmcp
+CLI/local-cli-fe-full/src/plugins/anylogmcp/**
+
+CLI/local-cli-backend/.venv
+CLI/local-cli-backend/.venv/**
+
 # Exclude node_modules — both the dir AND its contents
 # (without the /** the !CLI/** rule above wins for files inside it)
 CLI/local-cli-fe-full/node_modules
