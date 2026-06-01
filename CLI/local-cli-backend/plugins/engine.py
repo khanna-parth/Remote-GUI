@@ -1,5 +1,7 @@
-from plugins.base import CompletePlugin
 import asyncio
+import importlib.metadata
+import importlib.util
+import json
 import os
 import re
 import sys
@@ -10,12 +12,80 @@ from typing import AsyncGenerator, Dict, List, Optional
 import aiofiles
 from psutil import AccessDenied, NoSuchProcess, Process
 
-from plugins.base import InstalledPlugin
+from plugins.base import CompletePlugin, InstalledPlugin
 from plugins.exceptions import PluginError, PluginNotFoundError, PluginNotRunningError
 
 PLUGINS_PATH = (
     Path(os.path.dirname(os.path.abspath(__file__))).parent / "official-plugins"
 )
+HOST_BACKEND_ROOT = Path(__file__).resolve().parent.parent
+
+DEFAULT_ANYLOG_API_SPEC = "git+https://github.com/AnyLog-co/AnyLog-API@main"
+_ANYLOG_DIST_NAMES = ("anylog-api", "anylog_api")
+
+
+def _anylog_api_spec_from_host() -> Optional[str]:
+    if importlib.util.find_spec("anylog_api") is None:
+        return None
+
+    for dist_name in _ANYLOG_DIST_NAMES:
+        try:
+            dist = importlib.metadata.distribution(dist_name)
+        except importlib.metadata.PackageNotFoundError:
+            continue
+
+        try:
+            direct = json.loads(dist.read_text("direct_url.json"))
+            url = direct.get("url")
+            if url:
+                return url
+        except (FileNotFoundError, OSError, json.JSONDecodeError, KeyError, TypeError) as e:
+            print(f"Failed to load direct_url.json for {dist_name}: {e}")
+            pass
+
+    return None
+
+
+def _resolve_anylog_api_install_spec() -> str:
+    env_spec = os.environ.get("ANYLOG_API_PIP_SPEC", "").strip()
+    if env_spec:
+        return env_spec
+
+    host_spec = _anylog_api_spec_from_host()
+    if host_spec:
+        return host_spec
+
+    return DEFAULT_ANYLOG_API_SPEC
+
+
+async def _install_anylog_api_into_plugin_venv(
+    venv_python: Path, backend_path: Path, log_file
+) -> None:
+    spec = _resolve_anylog_api_install_spec()
+    log_file.write(
+        f"\n[Enging] Installing anylog_api into plugin environment: {spec}\n".encode(
+            "utf-8"
+        )
+    )
+    log_file.flush()
+
+    proc = await asyncio.create_subprocess_exec(
+        "uv",
+        "pip",
+        "install",
+        spec,
+        "--python",
+        str(venv_python),
+        cwd=backend_path,
+        stdout=log_file,
+        stderr=log_file,
+    )
+    if await proc.wait() != 0:
+        raise RuntimeError(
+            f"Failed installing anylog_api ({spec}). "
+            "Set ANYLOG_API_PIP_SPEC to your AnyLog-API wheel or git URL."
+        )
+
 
 class PluginEngine:
     def __init__(self):
@@ -87,6 +157,20 @@ class PluginEngine:
             if await setup_proc.wait() != 0:
                 raise Exception("Failed to install backend dependencies for plugin")
 
+            try:
+                await _install_anylog_api_into_plugin_venv(
+                    venv_python, backend_path, log_file
+                )
+            except RuntimeError as e:
+                raise Exception(str(e)) from e
+
+            env = os.environ.copy()
+            host = str(HOST_BACKEND_ROOT)
+            existing = env.get("PYTHONPATH", "")
+            env["PYTHONPATH"] = f"{host}:{existing}" if existing else host
+
+            print(f"env pythonpath: {env['PYTHONPATH']}")
+
             proc = await asyncio.create_subprocess_exec(
                 str(venv_uvicorn),
                 "main:app",
@@ -95,6 +179,7 @@ class PluginEngine:
                 cwd=backend_path,
                 stdout=log_file,
                 stderr=log_file,
+                env=env,
             )
             self.processes[installed_plugin.core.slug] = proc
             self.plugins[installed_plugin.core.slug] = installed_plugin

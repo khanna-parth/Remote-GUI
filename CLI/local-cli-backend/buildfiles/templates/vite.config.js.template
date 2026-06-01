@@ -16,7 +16,7 @@ export default defineConfig({
       remotes: {},
       exposes: {
         "./PluginApp": "@@EXPOSE_PATH@@",
-        "./XPage": "@@EXPOSE_PATH@@",
+        "./@@EXPOSE_MODULE@@": "@@EXPOSE_PATH@@",
       },
       shared: {
         react: {

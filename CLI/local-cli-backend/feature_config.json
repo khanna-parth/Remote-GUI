@@ -91,6 +91,16 @@
       "name": "Chat",
       "enabled": true,
       "description": "Interact with your Anylog data through a chatbot"
+    },
+    "dev/ssh-plugin": {
+      "name": "Remote Console",
+      "enabled": true,
+      "description": "Remotely connect to your Anylog nodes through the browser"
+    },
+    "dev/file-manager": {
+      "name": "File Manager",
+      "enabled": true,
+      "description": "A simple file manager plugin"
     }
   },
   "version": "1.0.0"

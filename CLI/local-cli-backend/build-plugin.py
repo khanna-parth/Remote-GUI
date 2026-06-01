@@ -76,7 +76,12 @@ def _module_paths(name):
     return paths
 
 
-def _check_absolute_import(module_name, plugin_root, plugins_root, problems):
+def _check_absolute_import(
+    module_name, plugin_root, plugins_root, problems, check_packages=True
+):
+    if not check_packages:
+        return
+
     if _is_stdlib_module(module_name):
         return
 
@@ -94,7 +99,7 @@ def _check_absolute_import(module_name, plugin_root, plugins_root, problems):
         problems.append(f"{module_name} resolves outside backend plugins tree: {loc}")
 
 
-def check_python_imports(plugin_root):
+def check_python_imports(plugin_root, check_packages=True):
     plugin_root = plugin_root.resolve()
     plugins_root = plugin_root.parent.resolve()
     problems = []
@@ -113,7 +118,11 @@ def check_python_imports(plugin_root):
             if isinstance(node, ast.Import):
                 for alias in node.names:
                     _check_absolute_import(
-                        alias.name.split(".")[0], plugin_root, plugins_root, problems
+                        alias.name.split(".")[0],
+                        plugin_root,
+                        plugins_root,
+                        problems,
+                        check_packages,
                     )
 
             elif isinstance(node, ast.ImportFrom):
@@ -145,7 +154,11 @@ def check_python_imports(plugin_root):
                         )
                 elif node.module:
                     _check_absolute_import(
-                        node.module.split(".")[0], plugin_root, plugins_root, problems
+                        node.module.split(".")[0],
+                        plugin_root,
+                        plugins_root,
+                        problems,
+                        check_packages,
                     )
 
     if problems:
@@ -155,7 +168,7 @@ def check_python_imports(plugin_root):
         )
 
 
-def check_js_imports(plugin_fe_root):
+def check_js_imports(plugin_fe_root, check_packages):
     plugin_fe_root = plugin_fe_root.resolve()
     problems = []
 
@@ -275,6 +288,7 @@ def write_frontend_extras(frontend_dir, src_dir, plugin_slug, page_path):
         "vite.config.js.template",
         PLUGIN=plugin_slug,
         EXPOSE_PATH=f"./src/{page_path.name}",
+        EXPOSE_MODULE=f"{page_path.name}",
     )
 
     for stale in src_dir.rglob("pluginHost.js"):
@@ -347,7 +361,40 @@ def main():
         default=None,
         help="Output directory (default: CLI/built-plugins/<plugin>).",
     )
+
+    parser.add_argument(
+        "--skip-be-package-check",
+        action="store_true",
+        help="Skip installed package validation for backend Python imports.",
+    )
+
+    parser.add_argument(
+        "--skip-fe-package-check",
+        action="store_true",
+        help="Skip installed package validation for frontend JS imports.",
+    )
+    parser.add_argument(
+        "--skip-all-package-check",
+        action="store_true",
+        help="Skip installed package validation for both backend and frontend.",
+    )
+
+    parser.add_argument(
+        "--skip-be-checks",
+        action="store_true",
+        help="Skips all validation for backend.",
+    )
+
+    parser.add_argument(
+        "--skip-fe-checks",
+        action="store_true",
+        help="Skips all validation for backend.",
+    )
+
     args = parser.parse_args()
+
+    skip_be = args.skip_be_package_check or args.skip_all_package_check
+    skip_fe = args.skip_fe_package_check or args.skip_all_package_check
 
     plugin = args.plugin.strip()
     if not plugin:
@@ -366,8 +413,9 @@ def main():
     if not backend_src.is_dir():
         fatal(f"Backend plugin folder not found: {backend_src}")
 
-    log("Checking Python imports...")
-    check_python_imports(backend_src)
+    if not args.skip_be_checks:
+        log("Checking Python imports...")
+        check_python_imports(backend_src, check_packages=not skip_be)
 
     log("Finding router module...")
     router_path, router_mod = find_router_module(backend_src, plugin)
@@ -376,8 +424,9 @@ def main():
     log("Resolving frontend plugin directory...")
     fe_plugin = find_fe_plugin_dir(fe_root, plugin)
 
-    log("Checking JS imports...")
-    check_js_imports(fe_plugin)
+    if not args.skip_fe_checks:
+        log("Checking JS imports...")
+        check_js_imports(fe_plugin, check_packages=not skip_fe)
 
     backend_dest = output_dir / "backend"
     if backend_dest.exists():
